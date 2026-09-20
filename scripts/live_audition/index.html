@@ -8,6 +8,7 @@
   <section class="stage-shell" aria-label="Creature simulation"><div id="creature-stage"></div></section>
   <button id="open-menu" class="secondary menu-toggle" aria-haspopup="dialog" aria-controls="encounter-menu" aria-expanded="false" aria-label="Menu" title="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
   <button id="start" class="encounter-start" hidden>Speak to the Creature</button>
+  <p id="stage-warning" class="stage-warning" role="alert" hidden></p>
 </main>
 <dialog id="encounter-menu" aria-labelledby="menu-title">
   <div class="menu-heading"><h1 id="menu-title">The Creature</h1><button id="close-menu" class="secondary">Close menu</button></div>
@@ -20,7 +21,7 @@
 <select id="mode" hidden aria-hidden="true"><option value="elevenlabs" selected>ElevenLabs</option></select>
 <select id="voice" hidden aria-hidden="true"><option value="vesper" selected>Vesper</option></select>
 <div class="actions"><button id="stop" class="secondary" disabled>End audition</button></div>
-<p id="status" role="status">Ready. Five minutes per audition; twenty minutes total.</p>
+<p id="status" role="status">Ready. Up to twenty minutes per encounter.</p>
 <p class="fine">Microphone → OpenAI. Replies → ElevenLabs.<br>No audition recording saved. Headphones recommended.</p>
 <audio id="output" controls autoplay playsinline></audio>
 <div class="divider"></div>
@@ -69,7 +70,7 @@ let speechInputEnded=false,speechIdle=false;
 let visitorText='',visitorFinished=false,speechEmotion='curious',referenceDecode=null;
 let connectionAttempt=0;
 window.auditionState={phase:'ready',audioReceived:false};
-function state(phase,message){window.auditionState.phase=phase;status.textContent=message;window.creatureSimulation?.setPhase(phase);window.encounterUI?.setPhase(phase,ready);}
+function state(phase,message){window.auditionState.phase=phase;status.textContent=message;window.creatureSimulation?.setPhase(phase);window.encounterUI?.setPhase(phase,ready,message);}
 function stopScheduledAudio(){for(const source of speechSources){try{source.stop();}catch{}}speechSources.clear();nextAudioTime=0;window.creatureSimulation?.stop();}
 function interruptEleven(){speechGeneration++;clearTimeout(speechTimer);speechText='';speechQueue=[];speechStarted=false;speechInputEnded=false;speechIdle=false;if(speechSocket){try{speechSocket.send(JSON.stringify({type:'cancel'}));}catch{}speechSocket.close();speechSocket=null;}stopScheduledAudio();audio.pause();audio.currentTime=0;audio.removeAttribute('src');audio.load();}
 function enoughText(text,initial=false){return text.length>=(initial?SPEECH_FIRST_CHARS:SPEECH_MIN_CHARS)&&text.trim().split(/\s+/).length>=(initial?SPEECH_FIRST_WORDS:SPEECH_MIN_WORDS);}
@@ -161,9 +162,9 @@ microphone=acquired;
 microphone.getAudioTracks().forEach(t=>peer.addTrack(t,microphone));
 channel=peer.createDataChannel('oai-events');
 channel.onmessage=({data})=>{const e=JSON.parse(data);if(e.type==='session.started'){
-ready=true;clearTimeout(connectTimer);if(document.hidden){leaveEncounter();return;}state('connected',mode.value==='elevenlabs'?'Live through ElevenLabs—waiting for the Creature’s invitation.':'Live—speak to the Creature. Ends automatically after five minutes.');
+ready=true;clearTimeout(connectTimer);if(document.hidden){leaveEncounter();return;}state('connected',mode.value==='elevenlabs'?'Live through ElevenLabs—waiting for the Creature’s invitation.':'Live—speak to the Creature. Ends automatically after twenty minutes.');
 channel.send(JSON.stringify({type:'session.instructions.append',event_id:crypto.randomUUID(),delegation_id:null,content:'Begin this encounter now with one brief, quiet invitation for Christopher to speak, then listen. Do not announce the audition.'}));
-limitTimer=setTimeout(end,300000);
+limitTimer=setTimeout(end,1200000);
 }else if(e.type==='session.closed'){finalized=true;window.auditionState.usage=e.usage;state('ended','Audition ended. You can start another session.');cleanup();}
 else if(e.type==='session.input_transcript.delta'||e.type==='session.output_transcript.delta'){
 const speaker=e.type.includes('input_')?'Christopher':'Creature';if(window.auditionState.lastSpeaker!==speaker){captions.append(document.createTextNode('\n\n'+speaker+': '));window.auditionState.lastSpeaker=speaker;}captions.append(document.createTextNode(e.delta));captions.scrollTop=captions.scrollHeight;
@@ -175,13 +176,13 @@ await peer.setLocalDescription(await peer.createOffer());
 if(peer.iceGatheringState!=='complete')await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Connection setup timed out')),10000);peer.addEventListener('icegatheringstatechange',function check(){if(peer.iceGatheringState==='complete'){clearTimeout(timer);peer.removeEventListener('icegatheringstatechange',check);resolve();}});});
 if(attempt!==connectionAttempt||closing)return;
 const r=await fetch('/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,voice:voice.value,sdp:peer.localDescription.sdp})});
-const result=await r.json();if(!r.ok)throw Error(r.status===403?'OpenAI denied Live voice access (403): '+(result.error||'Access denied')+' Check this API project’s Live access and key permissions.':result.error||'Session creation failed');
+const result=await r.json();if(r.status===401){location.href='/login';return;}if(!r.ok){const error=Error(r.status===403?'OpenAI denied Live voice access (403): '+(result.error||'Access denied')+' Check this API project’s Live access and key permissions.':result.error||'Session creation failed');error.status=r.status;throw error;}
 if(attempt!==connectionAttempt||closing){signalStop();return;}
 await peer.setRemoteDescription({type:'answer',sdp:result.transport.sdp});
 if(attempt!==connectionAttempt||closing)return;
 connectTimer=setTimeout(()=>{if(!ready){end();}},20000);
 pollTimer=setInterval(async()=>{try{const s=await(await fetch('/status')).json();if(s.stop_requested&&!closing)end();}catch{}},3000);
-}catch(e){if(attempt!==connectionAttempt)return;const message=e.name==='NotAllowedError'?'Microphone permission was denied. Allow microphone access in this website’s browser settings, then try again.':e.message;window.auditionState.error=message;state('error',message);signalStop();cleanup();}
+}catch(e){if(attempt!==connectionAttempt)return;const limited=e.status===429;const message=limited?'The instruments have grown fevered. Let the current subside, then summon me again.':e.name==='NotAllowedError'?'Microphone permission was denied. Allow microphone access in this website’s browser settings, then try again.':e.message;window.auditionState.error=message;signalStop();cleanup();state(limited?'limit':'error',message);}
 };
 stop.onclick=end;
 async function prepareReference(){
@@ -214,7 +215,7 @@ window.addEventListener('visibilitychange',()=>{
 });
 </script>
 <script type="module" id="encounter-ui">
-const menu=document.querySelector('#encounter-menu'),openMenu=document.querySelector('#open-menu'),closeMenu=document.querySelector('#close-menu'),startButton=document.querySelector('#start');
+const menu=document.querySelector('#encounter-menu'),openMenu=document.querySelector('#open-menu'),closeMenu=document.querySelector('#close-menu'),startButton=document.querySelector('#start'),stageWarning=document.querySelector('#stage-warning');
 function showMenu(){if(!menu.open)menu.showModal();openMenu.setAttribute('aria-expanded','true');closeMenu.focus();}
 function hideMenu(){if(menu.open)menu.close();}
 openMenu.addEventListener('click',showMenu);closeMenu.addEventListener('click',hideMenu);
@@ -226,14 +227,16 @@ function syncStart(){startButton.hidden=!entranceComplete||sessionHidden;if(star
 syncStart();
 window.encounterUI={
   setEntranceComplete(value){if(entranceComplete===value)return;entranceComplete=value;syncStart();},
-  setPhase(phase,active=false){
+  setPhase(phase,active=false,message=''){
     sessionHidden=['connected','rendering','closing'].includes(phase)||(active&&phase==='error');
     syncStart();
     startButton.textContent=phase==='connecting'?'Connecting…':'Speak to the Creature';
+    stageWarning.hidden=phase!=='limit';
+    if(phase==='limit'){stageWarning.textContent=message;hideMenu();}
     if(startButton.hidden&&document.activeElement===startButton)openMenu.focus();
     if(phase==='error')showMenu();
   },
-  reset(){sessionHidden=false;syncStart();startButton.textContent='Speak to the Creature';},
+  reset(){sessionHidden=false;syncStart();startButton.textContent='Speak to the Creature';stageWarning.hidden=true;},
 };
 </script>
 </html>

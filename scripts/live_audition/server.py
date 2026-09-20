@@ -60,8 +60,10 @@ events = []
 speech_lock = threading.Lock()
 speech_count = 0
 SPEECH_PORT = 8768
-MAX_SESSIONS = min(20, int(os.environ.get('AUDITION_MAX_SESSIONS', '4')))
+MAX_SESSIONS = min(100, int(os.environ.get('AUDITION_MAX_SESSIONS', '60')))
 WINDOW_SECONDS = min(86400, int(os.environ.get('AUDITION_WINDOW_SECONDS', '1200')))
+SESSION_SECONDS = min(3600, max(300, int(os.environ.get('AUDITION_SESSION_SECONDS', '1200'))))
+MAX_SPEECH_STREAMS = min(120, max(12, int(os.environ.get('AUDITION_MAX_SPEECH_STREAMS', '60'))))
 
 def api(path, body):
     req = urllib.request.Request('https://api.openai.com/v1/' + path,
@@ -103,7 +105,7 @@ def speech_socket(connection):
         connection.close(code=1008, reason='Unauthorized')
         return
     with lock:
-        if active is None or speech_count >= 12:
+        if active is None or speech_count >= MAX_SPEECH_STREAMS:
             connection.close(code=1008, reason='Audition unavailable')
             return
         speech_count += 1
@@ -333,7 +335,7 @@ class Handler(BaseHTTPRequestHandler):
                 count += 1
                 deadline = deadline or time.monotonic() + WINDOW_SECONDS
                 speech_count = 0
-                session.update(id=result['session']['id'], until=min(deadline, time.monotonic()+300))
+                session.update(id=result['session']['id'], until=min(deadline, time.monotonic()+SESSION_SECONDS))
             threading.Thread(target=watch, args=(session,), daemon=True).start()
             events.append({'type': 'created', 'voice': voice})
             return self.reply(201, result)

@@ -23,8 +23,10 @@ try:
     for name in ('OPENAI_API_KEY', 'ELEVENLABS_API_KEY', 'PUBLIC_ORIGIN'):
         if not os.environ.get(name):
             raise RuntimeError(f'Missing required runtime secret/configuration: {name}')
-    os.environ.setdefault('AUDITION_MAX_SESSIONS', '20')
+    os.environ.setdefault('AUDITION_MAX_SESSIONS', '60')
     os.environ.setdefault('AUDITION_WINDOW_SECONDS', '86400')
+    os.environ.setdefault('AUDITION_SESSION_SECONDS', '1200')
+    os.environ.setdefault('AUDITION_MAX_SPEECH_STREAMS', '60')
     os.environ['PYTHONPATH'] = str(root)
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     signal.signal(signal.SIGINT, lambda *_: sys.exit(0))

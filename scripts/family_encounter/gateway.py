@@ -27,6 +27,8 @@ SECURITY = {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
             'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
             'Permissions-Policy': 'microphone=(self), camera=(), geolocation=()',
             'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"}
+SESSION_SECONDS = 1200
+MAX_REPLY_STREAMS = 60
 
 
 def password_hash(password):
@@ -211,8 +213,7 @@ class Gateway:
                 page = await self.backend_token()
                 page = page.replace("const token='"+self.token+"'", "const token='"+csrf+"'")
                 page = page.replace('ws://localhost:8768/speech?token=', "${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/speech?token=")
-                page = page.replace('Five minutes per audition; twenty minutes total.', 'Five minutes per encounter. One visitor at a time; family usage limits apply.')
-                page = page.replace('const result=await r.json();if(!r.ok)throw Error(', 'const result=await r.json();if(r.status===401){location.href=\'/login\';return;}if(!r.ok)throw Error(')
+                page = page.replace('Ready. Up to twenty minutes per encounter.', 'Ready. Up to twenty minutes per encounter. One visitor at a time.')
                 page = page.replace('</dialog>', '<form method="post" action="/logout"><input type="hidden" name="token" value="'+csrf+'"><button class="secondary">Lock the laboratory</button></form></dialog>')
                 return web.Response(text=page, content_type='text/html')
             if request.path == '/status':
@@ -247,22 +248,24 @@ class Gateway:
                 return web.json_response({'error':'The Creature is speaking with another visitor. Try again shortly.'}, status=409)
             if body.get('voice') != 'vesper' or not isinstance(body.get('sdp'), str) or not body['sdp'].startswith('v=0'):
                 return web.Response(status=400)
-            if not self.store.reserve([('sessions:hour',4,3600), ('sessions:day',20,86400)]):
+            # Versioned keys prevent an obsolete, tighter quota from continuing
+            # to block the family after a limit-policy deployment.
+            if not self.store.reserve([('sessions:v2:hour',12,3600), ('sessions:v2:day',60,86400)]):
                 return web.json_response({'error':'The family encounter limit has been reached. Please return later.'}, status=429)
             await self.backend_token()
             code, data, _ = await self.upstream_request('POST', '/session', {'token':self.token,'voice':'vesper','sdp':body['sdp']})
             if code != 201:
                 return web.json_response({'error':'The Creature is unavailable. Please try again shortly.'}, status=503)
             answer = json.loads(data)['transport']['sdp']
-            self.owner, self.until, self.replies = sid, time.monotonic()+300, 0
+            self.owner, self.until, self.replies = sid, time.monotonic()+SESSION_SECONDS, 0
             # Only SDP is needed. Never expose a provider session credential.
             return web.json_response({'transport':{'sdp':answer}}, status=201)
 
     async def bridge(self, request, sid):
-        if sid != self.owner or time.monotonic() >= self.until or self.replies >= 12:
+        if sid != self.owner or time.monotonic() >= self.until or self.replies >= MAX_REPLY_STREAMS:
             return web.Response(status=403)
         async with self.speech_lock:
-            if sid != self.owner or time.monotonic() >= self.until or self.replies >= 12:
+            if sid != self.owner or time.monotonic() >= self.until or self.replies >= MAX_REPLY_STREAMS:
                 return web.Response(status=403)
             self.replies += 1
             socket = web.WebSocketResponse(max_msg_size=65536, heartbeat=15)
