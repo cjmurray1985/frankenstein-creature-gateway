@@ -18,7 +18,7 @@ from aiohttp import ClientSession, ClientTimeout, WSMsgType, web
 
 COOKIE = 'creature_family'
 STATIC = {'/audition.css', '/creature-scene.mjs', '/motion-core.mjs',
-          '/blender-head.mjs', '/assets/creature-kiri.glb',
+          '/blender-head.mjs', '/eye-contact.mjs', '/assets/creature-kiri.glb',
           '/assets/special-elite.ttf', '/vendor/three.module.js',
           '/vendor/three.core.js', '/vendor/GLTFLoader.js',
           '/vendor/BufferGeometryUtils.js', '/vendor/OrbitControls.js',
