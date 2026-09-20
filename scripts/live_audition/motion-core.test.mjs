@@ -119,15 +119,11 @@ test('entrance holds a silhouette until after the rise, then reveals the portrai
   assert.equal('lightningCue' in upright,false);
 });
 
-test('eyes begin opening at 3.9 seconds during the rise and light reveal',()=>{
-  for(let frame=0;frame<=234;frame++)assert.equal(entrancePose(frame/60).eyeOpen,0);
-  let previous=0;
-  for(let frame=235;frame<=420;frame++){
-    const p=entrancePose(frame/60);
-    assert.ok(p.progress>.89);assert.ok(p.reveal>.15);assert.ok(p.eyeOpen>=previous&&p.eyeOpen<=1);
-    if(p.eyeOpen<1)assert.equal(p.complete,false);
-    previous=p.eyeOpen;
-  }
-  assert.equal(previous,1);assert.equal(entrancePose(8.5).complete,true);
+test('eyes stay closed until upright, startle open, then return to rest',()=>{
+  for(let frame=0;frame<=303;frame++)assert.equal(entrancePose(frame/60).eyeOpen,0);
+  assert.ok(entrancePose(5.1).eyeOpen>0&&entrancePose(5.1).eyeOpen<1);
+  assert.ok(entrancePose(5.33).eyeOpen>1);
+  assert.equal(entrancePose(6.48).eyeOpen,1);
+  assert.equal(entrancePose(8.5).complete,true);
   assert.equal(entrancePose(0,true).eyeOpen,1);
 });

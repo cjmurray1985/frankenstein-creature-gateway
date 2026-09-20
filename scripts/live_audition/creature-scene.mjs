@@ -40,8 +40,11 @@ async function init(){
   key.shadow.bias=-.00015;key.shadow.normalBias=.015;key.shadow.camera.updateProjectionMatrix();
   scene.add(ambient,key,rim,fill);rim.position.set(3,2,-3);fill.position.set(2,0,5);
   const lightning=new THREE.DirectionalLight(0xdceaff,0);lightning.position.set(-2,4,5);scene.add(lightning);
+  const neonGreen=new THREE.PointLight(0x43ffb2,0,7);neonGreen.position.set(-2,-1.8,2.5);
+  const neonBlue=new THREE.PointLight(0x3b8dff,0,7);neonBlue.position.set(2,-.8,1.8);scene.add(neonGreen,neonBlue);
   const lightningControl=document.querySelector('#lighting-lightning'),testLightning=document.querySelector('#test-lightning');
-  let lightningStarted=-Infinity,lightningDuration=100,lightningPower=10,lightningCount=0,lightningPeak=0,entranceCue=false,entranceCuePlayed=false,thunderContext=null;
+  let lightningStarted=-Infinity,lightningDuration=100,lightningPower=10,lightningCount=0,lightningPeak=0,entranceCue=false,entranceCuePlayed=false,thunderContext=null,sparkStarted=-Infinity,sparkDuration=160,sparkNext=2.5,sparkCount=0;
+  const backgroundBase=new THREE.Color(0x000000),backgroundFlash=new THREE.Color(0x294b45);
   let nextLightning=performance.now()+18000+Math.random()*22000;
   function strike(now){
     lightningStarted=now;lightningDuration=80+Math.random()*40;lightningPower=9+Math.random()*3;
@@ -71,7 +74,7 @@ async function init(){
   const lightingPresets={
     // Low frontal green light catches the underside of the brow and nose;
     // restrained fill/rim leave the upper skull and far cheek in darkness.
-    laboratory:{sky:0x627467,ground:0x050706,ambient:.028,key:0xa6c798,power:1.58,position:[-1.2,-5.5,2.0],rim:0x71879c,rimPower:.14,fill:.44,fillColor:0x9baf9e,fillPosition:[0,.2,4]},
+    laboratory:{sky:0x627467,ground:0x050706,ambient:.018,key:0xa6c798,power:1.16,position:[-1.2,-5.5,2.0],rim:0x71879c,rimPower:.10,fill:.26,fillColor:0x9baf9e,fillPosition:[0,.2,4]},
     moody:{sky:0xb2bfcd,ground:0x171b20,ambient:.38,key:0xffdfb7,power:1.65,position:[-4,5,2.5],rim:0x88b8d0,rimPower:1.25,fill:.10,background:0x070b0e},
     moonlight:{sky:0x8eacc8,ground:0x10151c,ambient:.28,key:0xb5cee8,power:1.45,position:[-3,4,3],rim:0x779fca,rimPower:1.5,fill:.12,background:0x060a12},
     studio:{sky:0xffffff,ground:0x34382a,ambient:2,key:0xffffff,power:2,position:[-3,4,4],rim:0xffffff,rimPower:0,fill:0,background:0x0c1110},
@@ -106,6 +109,7 @@ async function init(){
     // cannot stretch the flash; the stage and throat stay black throughout.
     const envelope=age>=0&&age<lightningDuration?1-THREE.MathUtils.smoothstep(age/lightningDuration,.20,1):0;
     lightning.intensity=enabled?lightningPower*envelope*Number(lightingLevel.value)/100:0;
+    const bg=entranceCue?envelope*.30:0;scene.background.copy(backgroundBase).lerp(backgroundFlash,bg);
     lightningPeak=Math.max(lightningPeak,lightning.intensity);
     diagnostics.lightning={count:lightningCount,intensity:lightning.intensity,peak:lightningPeak,durationMs:lightningDuration};
   }
@@ -122,7 +126,12 @@ async function init(){
     key.intensity=p.power*gain*THREE.MathUtils.lerp(1,(.84+.16*lampNoise(t*2.6))*drop,flickerMix);
     fill.intensity=p.fill*gain*THREE.MathUtils.lerp(1,.60+.40*warm,flickerMix);
     rim.intensity=p.rimPower*gain*THREE.MathUtils.lerp(1,.84+.16*lampNoise(t*.65+19),flickerMix);
-    diagnostics.lampLevels=[key.intensity,fill.intensity,rim.intensity];
+    const now=performance.now();
+    if(!reduced.matches&&!document.hidden&&t>=sparkNext){sparkStarted=now;sparkDuration=90+Math.random()*150;sparkNext=t+2.8+Math.random()*5.4;sparkCount++;}
+    const sparkAge=now-sparkStarted,sparkEnvelope=sparkAge>=0&&sparkAge<sparkDuration?Math.sin(Math.PI*sparkAge/sparkDuration):0;
+    neonGreen.intensity=lightingSelect.value==='laboratory'?(0.025+0.22*sparkEnvelope)*gain:0;
+    neonBlue.intensity=lightingSelect.value==='laboratory'?(0.018+0.16*Math.max(0,sparkEnvelope-.18))*gain:0;
+    diagnostics.lampLevels=[key.intensity,fill.intensity,rim.intensity,neonGreen.intensity,neonBlue.intensity];diagnostics.sparks={count:sparkCount,intensity:sparkEnvelope};
   }
   const controls=new OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.enableDamping=true;
   controls.target.copy(lookTarget);controls.minDistance=6.5;controls.maxDistance=14;controls.update();
@@ -156,7 +165,7 @@ async function init(){
   }
   if(document.querySelector('#start').disabled)finishEntrance();
   updateEntrance(entranceStarted);
-  replayEntrance.onclick=()=>{if(document.querySelector('#start').disabled)return;cancelStudy();resetView();entranceStarted=performance.now();entranceDone=false;entranceCue=false;entranceCuePlayed=false;lightningStarted=-Infinity;updateEntrance(entranceStarted);document.querySelector('#encounter-menu').close();};
+  replayEntrance.onclick=()=>{if(document.querySelector('#start').disabled)return;cancelStudy();resetView();entranceStarted=performance.now();entranceDone=false;entranceCue=false;entranceCuePlayed=false;lightningStarted=-Infinity;sparkStarted=-Infinity;sparkNext=2.5;updateEntrance(entranceStarted);document.querySelector('#encounter-menu').close();};
   document.querySelector('#wireframe').onchange=e=>model.group.traverse(o=>{if(o.isMesh)for(const m of (Array.isArray(o.material)?o.material:[o.material]))m.wireframe=e.target.checked;});
   const meters=document.querySelector('#mechanism-meters');
   for(const [id,info] of Object.entries(RIG)){
