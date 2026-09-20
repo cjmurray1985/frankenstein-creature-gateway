@@ -229,7 +229,7 @@ async function init(){
     if(forced)p=forced;
     const entry=updateEntrance(now);
     p.CH8=THREE.MathUtils.lerp(1,p.CH8,entry.eyeOpen);
-    controls.update();model.update(p,camera.position);diagnostics.gaze=model.state.gaze;
+    controls.update();model.update(p,camera.position,entry.complete);diagnostics.gaze=model.state.gaze;
     // The Blender pivot carries the whole head, wig and terminals together.
     updateLaboratoryLights(elapsed);updateLightning(now);renderer.render(scene,camera);
     diagnostics.frames++;diagnostics.pose=p;diagnostics.speaking=current.speaking;diagnostics.direction=direction;diagnostics.phase=phase;diagnostics.queuedSegments=timeline.segments.length;

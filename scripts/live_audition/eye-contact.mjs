@@ -13,3 +13,14 @@ export function eyeContactProjection(visitor,center,radius){
     y:clamp(-y*hitScale/(2*radius.y),-.25,.25),
   };
 }
+
+// The theatrical camera sits below the eight-foot Creature. Subtract the
+// neutral visitor projection so a frontal head pose reads as direct screen
+// contact; subsequent signed deltas still counter-rotate both pupils as the
+// head or camera moves.
+export function neutralizedEyeContact(contact,neutral){
+  return {
+    x:clamp(contact.x-neutral.x,-.30,.30),
+    y:clamp(contact.y-neutral.y,-.25,.25),
+  };
+}

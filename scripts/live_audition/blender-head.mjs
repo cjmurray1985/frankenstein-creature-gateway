@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
 import {clamp} from './motion-core.mjs';
-import {eyeContactProjection} from './eye-contact.mjs';
+import {eyeContactProjection,neutralizedEyeContact} from './eye-contact.mjs';
 
 // Fixed eye shells: moving iris/pupil sampling cannot move lids or the orbital outline.
 function fitGazeMaterial(mesh,side){
@@ -11,6 +11,7 @@ function fitGazeMaterial(mesh,side){
   const eyeRadius=mesh.geometry.boundingBox.getSize(new THREE.Vector3()).multiplyScalar(.5);
   const eyeCenter=mesh.geometry.boundingBox.getCenter(new THREE.Vector3());
   const localVisitor=new THREE.Vector3();
+  const neutralContact=new THREE.Vector2();let contactCalibrated=false;
   // Iris-only centers in the two scan-baked eye maps. The sampled disc excludes lid edges.
   const source={value:new THREE.Vector2(side==='L'?.455:.512,side==='L'?.495:.515)};
   material.onBeforeCompile=shader=>{
@@ -30,7 +31,7 @@ function fitGazeMaterial(mesh,side){
     `);
   };
   material.customProgramCacheKey=()=> 'kiri-fixed-shell-iris-v2';
-  return {mesh,gaze,restMatrix:mesh.matrix.clone(),set(x,y,cameraPosition){
+  return {mesh,gaze,neutralContact,get calibrated(){return contactCalibrated;},restMatrix:mesh.matrix.clone(),set(x,y,cameraPosition,calibrate=false){
     // Aim each eye independently at the actual visitor camera after all head
     // transforms. Intersect that optical axis with the fixed ellipsoid, then
     // use the export's planar UV mapping (V runs opposite local Y).
@@ -40,7 +41,9 @@ function fitGazeMaterial(mesh,side){
       // Preserve the signed horizontal camera direction. The old absolute-
       // value shortcut forced the pupils toward opposite targets as the head
       // turned, so one eye could hold contact while the other looked away.
-      ({x:baseX,y:baseY}=eyeContactProjection(localVisitor,eyeCenter,eyeRadius));
+      const contact=eyeContactProjection(localVisitor,eyeCenter,eyeRadius);
+      if(calibrate&&!contactCalibrated){neutralContact.set(contact.x,contact.y);contactCalibrated=true;}
+      if(contactCalibrated)({x:baseX,y:baseY}=neutralizedEyeContact(contact,neutralContact));
     }
     // Emotional glances remain offsets from camera contact, not a fixed down-bias.
     gaze.value.set(clamp(baseX+Math.sin(clamp(x,-1,1)*.32)*.5,-.38,.38),clamp(baseY-Math.sin(clamp(y,-1,1)*.24)*.5,-.30,.30));
@@ -221,16 +224,17 @@ export async function buildBlenderHead(){
   }
   const neckRest=neck.quaternion.clone(),rotation=new THREE.Quaternion();
   const state={asset:'KIRI scan · centered gaze',mouthMeshes:mouthMeshes.length,mouthLiningEdges:mouthLinings.reduce((n,l)=>n+l.edges,0),eyePivots:[],eyeForwardOffset,eyeMode:'iris/pupil only · fixed shells',eyelidsRigged:true,eyelidClosure:0,eyelidPeakClosure:0,mouth:0,restCorrection:{eyeLine:eyeLine.toArray(),pitchDegrees:-8}};
-  return {group,state,setReveal(value){entranceReveal.value=clamp(value);},update(p,cameraPosition){
+  return {group,state,setReveal(value){entranceReveal.value=clamp(value);},update(p,cameraPosition,calibrateContact=false){
     const amount=clamp(p.M1||0);for(const mesh of mouthMeshes)mesh.morphTargetInfluences[mesh.morphTargetDictionary.Mouth_Open]=amount;
     for(const lining of mouthLinings)lining.set(amount);
     rotation.setFromEuler(new THREE.Euler((p.NECK_FB||0)*.16,(p.NECK_SIDE||0)*.25,-(p.NECK_SIDE||0)*.17,'YXZ'));
     neck.quaternion.copy(neckRest).multiply(rotation);
     group.updateWorldMatrix(true,true);
-    eyes.R.set(p.CH7||0,p.CH4||0,cameraPosition);eyes.L.set(p.CH6||0,p.CH5||0,cameraPosition);
+    eyes.R.set(p.CH7||0,p.CH4||0,cameraPosition,calibrateContact);eyes.L.set(p.CH6||0,p.CH5||0,cameraPosition,calibrateContact);
     const closure=clamp(p.CH8||0);for(const lid of Object.values(lids))lid.set(closure);state.eyelidClosure=closure;state.eyelidPeakClosure=Math.max(state.eyelidPeakClosure,closure);
     state.mouth=amount;state.neck=[p.NECK_SIDE||0,p.NECK_FB||0];
     state.gaze={R:eyes.R.gaze.value.toArray(),L:eyes.L.gaze.value.toArray()};
+    state.gazeNeutral={R:eyes.R.neutralContact.toArray(),L:eyes.L.neutralContact.toArray(),calibrated:eyes.R.calibrated&&eyes.L.calibrated};
     state.eyeShellsFixed=Object.values(eyes).every(e=>e.mesh.matrix.equals(e.restMatrix));
   }};
 }
