@@ -36,7 +36,11 @@ function fitGazeMaterial(mesh,side){
     if(cameraPosition){
       localVisitor.copy(cameraPosition);mesh.worldToLocal(localVisitor);
       const d=localVisitor,hitScale=1/Math.sqrt((d.x/eyeRadius.x)**2+(d.y/eyeRadius.y)**2+(d.z/eyeRadius.z)**2);
-      baseX=clamp(d.x*hitScale/(2*eyeRadius.x),-.30,.30);
+      // The scan mirrors the two eye meshes across X. Force the projected
+      // contact point to converge toward the visitor at center view rather
+      // than letting both mirrored UVs drift in the same direction.
+      const projectedX=d.x*hitScale/(2*eyeRadius.x);
+      baseX=clamp((side==='R'?-1:1)*Math.abs(projectedX),-.30,.30);
       baseY=clamp(-d.y*hitScale/(2*eyeRadius.y),-.25,.25);
     }
     // Emotional glances remain offsets from camera contact, not a fixed down-bias.
