@@ -271,6 +271,7 @@ class Handler(BaseHTTPRequestHandler):
             '/assets/special-elite.ttf': 'font/ttf',
             '/creature-scene.mjs': 'text/javascript; charset=utf-8',
             '/motion-core.mjs': 'text/javascript; charset=utf-8',
+            '/eye-contact.mjs': 'text/javascript; charset=utf-8',
             '/blender-head.mjs': 'text/javascript; charset=utf-8',
             '/assets/creature-v9.glb': 'model/gltf-binary',
             '/assets/creature-kiri.glb': 'model/gltf-binary',

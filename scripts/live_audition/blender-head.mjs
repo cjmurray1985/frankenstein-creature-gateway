@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
 import {clamp} from './motion-core.mjs';
+import {eyeContactProjection} from './eye-contact.mjs';
 
 // Fixed eye shells: moving iris/pupil sampling cannot move lids or the orbital outline.
 function fitGazeMaterial(mesh,side){
@@ -8,6 +9,7 @@ function fitGazeMaterial(mesh,side){
   const gaze={value:new THREE.Vector2()};
   mesh.geometry.computeBoundingBox();
   const eyeRadius=mesh.geometry.boundingBox.getSize(new THREE.Vector3()).multiplyScalar(.5);
+  const eyeCenter=mesh.geometry.boundingBox.getCenter(new THREE.Vector3());
   const localVisitor=new THREE.Vector3();
   // Iris-only centers in the two scan-baked eye maps. The sampled disc excludes lid edges.
   const source={value:new THREE.Vector2(side==='L'?.455:.512,side==='L'?.495:.515)};
@@ -35,13 +37,10 @@ function fitGazeMaterial(mesh,side){
     let baseX=0,baseY=0;
     if(cameraPosition){
       localVisitor.copy(cameraPosition);mesh.worldToLocal(localVisitor);
-      const d=localVisitor,hitScale=1/Math.sqrt((d.x/eyeRadius.x)**2+(d.y/eyeRadius.y)**2+(d.z/eyeRadius.z)**2);
-      // The scan mirrors the two eye meshes across X. Force the projected
-      // contact point to converge toward the visitor at center view rather
-      // than letting both mirrored UVs drift in the same direction.
-      const projectedX=d.x*hitScale/(2*eyeRadius.x);
-      baseX=clamp((side==='R'?-1:1)*Math.abs(projectedX),-.30,.30);
-      baseY=clamp(-d.y*hitScale/(2*eyeRadius.y),-.25,.25);
+      // Preserve the signed horizontal camera direction. The old absolute-
+      // value shortcut forced the pupils toward opposite targets as the head
+      // turned, so one eye could hold contact while the other looked away.
+      ({x:baseX,y:baseY}=eyeContactProjection(localVisitor,eyeCenter,eyeRadius));
     }
     // Emotional glances remain offsets from camera contact, not a fixed down-bias.
     gaze.value.set(clamp(baseX+Math.sin(clamp(x,-1,1)*.32)*.5,-.38,.38),clamp(baseY-Math.sin(clamp(y,-1,1)*.24)*.5,-.30,.30));
