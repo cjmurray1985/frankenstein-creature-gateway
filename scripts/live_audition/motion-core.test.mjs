@@ -96,11 +96,11 @@ test('entrance rises continuously from darkness and settles without looping',()=
     previous=current;
   }
   assert.equal(Math.abs(previous.lean),0);assert.equal(previous.headPitch,.28);assert.equal(previous.reveal,1);assert.equal(previous.complete,true);
-  assert.deepEqual(entrancePose(60),entrancePose(9));
+  assert.deepEqual(entrancePose(60),entrancePose(10));
 });
 
 test('reduced-motion skips the rise and staging preserves requested relative scale',()=>{
-  assert.deepEqual(entrancePose(0,true),entrancePose(9));
+  assert.deepEqual(entrancePose(0,true),entrancePose(10));
   const s=ENCOUNTER_STAGE;
   assert.equal(s.creatureFeet,8);assert.equal(s.visitorFeet*12,71);assert.equal(s.distanceFeet,5);
   assert.ok(s.waistFeet<s.visitorFeet-s.eyeInsetFeet);
@@ -119,11 +119,11 @@ test('entrance holds a silhouette until after the rise, then reveals the portrai
   assert.equal('lightningCue' in upright,false);
 });
 
-test('eyes stay closed until upright, startle open, then return to rest',()=>{
-  for(let frame=0;frame<=303;frame++)assert.equal(entrancePose(frame/60).eyeOpen,0);
-  assert.ok(entrancePose(5.1).eyeOpen>0&&entrancePose(5.1).eyeOpen<1);
-  assert.ok(entrancePose(5.33).eyeOpen>1);
-  assert.equal(entrancePose(6.48).eyeOpen,1);
+test('eyes stay closed until full light, startle open, then return to rest',()=>{
+  for(let frame=0;frame<=509;frame++)assert.equal(entrancePose(frame/60).eyeOpen,0);
+  assert.ok(entrancePose(8.6).eyeOpen>0&&entrancePose(8.6).eyeOpen<1);
+  assert.ok(entrancePose(8.74).eyeOpen>1);
+  assert.equal(entrancePose(9.84).eyeOpen,1);
   assert.equal(entrancePose(8.5).complete,true);
   assert.equal(entrancePose(0,true).eyeOpen,1);
 });

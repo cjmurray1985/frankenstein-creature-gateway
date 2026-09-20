@@ -33,14 +33,14 @@ export function entrancePose(seconds,reduced=false){
   // Keep the lids shut through the sit-up. Once upright, snap them open for
   // a brief startle, then ease back to the normal resting opening.
   const upright=progress>=1;
-  const jump=reduced?1:clamp((seconds-5.05)/.28);
-  const settleEyes=reduced?1:clamp((seconds-5.33)/1.15);
+  const jump=reduced?1:clamp((seconds-8.5)/.24);
+  const settleEyes=reduced?1:clamp((seconds-8.74)/1.1);
   const eyeOpen=reduced?1:upright?(jump<1?1.85*jump:1.85-(.85*settleEyes*settleEyes*(3-2*settleEyes))):0;
   const settle=clamp((progress-.65)/.35);
   // The visitor is on +Z. Reclining toward -Z places the head behind the
   // hips, face upward; rising then travels upward AND toward the visitor.
   // Keep the camera fixed and acquire the downward gaze only near upright.
-  return {progress,reveal,lean:-(1-progress)*Math.PI/2,headPitch:.28*settle*settle*(3-2*settle),framing:1,eyeOpen,complete:t===1&&r===1&&upright&&settleEyes===1};
+  return {progress,reveal,lean:-(1-progress)*Math.PI/2,headPitch:.28*settle*settle*(3-2*settle),framing:1,eyeOpen,complete:t===1&&r===1};
 }
 export function approach(value,target,speed,dt) {
   return value+clamp(target-value,-speed*dt,speed*dt);

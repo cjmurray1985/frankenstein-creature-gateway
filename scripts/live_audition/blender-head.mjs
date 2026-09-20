@@ -37,7 +37,7 @@ function fitGazeMaterial(mesh,side){
       localVisitor.copy(cameraPosition);mesh.worldToLocal(localVisitor);
       const d=localVisitor,hitScale=1/Math.sqrt((d.x/eyeRadius.x)**2+(d.y/eyeRadius.y)**2+(d.z/eyeRadius.z)**2);
       baseX=clamp(d.x*hitScale/(2*eyeRadius.x),-.30,.30);
-      baseY=clamp(-d.y*hitScale/(2*eyeRadius.x),-.25,.25);
+      baseY=clamp(-d.y*hitScale/(2*eyeRadius.y),-.25,.25);
     }
     // Emotional glances remain offsets from camera contact, not a fixed down-bias.
     gaze.value.set(clamp(baseX+Math.sin(clamp(x,-1,1)*.32)*.5,-.38,.38),clamp(baseY-Math.sin(clamp(y,-1,1)*.24)*.5,-.30,.30));

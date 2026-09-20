@@ -151,7 +151,7 @@ async function init(){
   const replayEntrance=document.querySelector('#replay-entrance');
   finishEntrance=()=>{window.encounterUI?.setEntranceComplete(true);entranceDone=true;waist.rotation.x=0;headMount.rotation.x=.28;model.setReveal(1);camera.fov=restingFov;camera.updateProjectionMatrix();controls.enabled=true;};
   function updateEntrance(now){
-    const value=entranceDone?entrancePose(9):entrancePose((now-entranceStarted)/1000,reduced.matches);
+    const value=entranceDone?entrancePose(10):entrancePose((now-entranceStarted)/1000,reduced.matches);
     waist.rotation.x=value.lean;headMount.rotation.x=value.headPitch;model.setReveal(value.reveal);controls.enabled=value.complete;
     // Supine-to-seated motion approaches from behind the hips. A fixed lens
     // preserves that physical arc instead of creating an artificial zoom.
@@ -229,7 +229,7 @@ async function init(){
     if(forced)p=forced;
     const entry=updateEntrance(now);
     p.CH8=THREE.MathUtils.lerp(1,p.CH8,entry.eyeOpen);
-    controls.update();model.update(p,camera.position);
+    controls.update();model.update(p,camera.position);diagnostics.gaze=model.state.gaze;
     // The Blender pivot carries the whole head, wig and terminals together.
     updateLaboratoryLights(elapsed);updateLightning(now);renderer.render(scene,camera);
     diagnostics.frames++;diagnostics.pose=p;diagnostics.speaking=current.speaking;diagnostics.direction=direction;diagnostics.phase=phase;diagnostics.queuedSegments=timeline.segments.length;
