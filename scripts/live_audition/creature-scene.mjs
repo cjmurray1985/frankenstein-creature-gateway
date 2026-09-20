@@ -3,7 +3,7 @@ import {OrbitControls} from './vendor/OrbitControls.js';
 import {AudioMotion,MechanicalPose,RIG,DIRECTIONS,ENCOUNTER_STAGE,entrancePose,clamp} from './motion-core.mjs';
 import {buildBlenderHead} from './blender-head.mjs';
 
-const host=document.querySelector('#creature-stage'),label=document.querySelector('#scene-state');
+const host=document.querySelector('#creature-stage'),label=document.querySelector('#scene-state'),awakeningCue=document.querySelector('#awakening-cue');
 const timeline=new AudioMotion(),pose=new MechanicalPose();
 let context=null,direction='curious',phase='ready',last=performance.now(),nextBlink=7,blinkStart=-10;
 let referenceAudio=null,referenceSamples=null,referenceEnvelope=null;
@@ -19,7 +19,13 @@ window.creatureSimulation={
   stop(){cancelStudy();timeline.clear();pose.jaw=0;referenceAudio=null;},
   bindReference(audio,samples,rate){cancelStudy();referenceAudio=audio;referenceSamples=samples;referenceEnvelope=new AudioMotion();referenceEnvelope.enqueue(samples,rate,0,'curious');},
 };
-init().catch(error=>{window.encounterUI?.setEntranceComplete(true);label.textContent='3D preview unavailable — voice audition still works.';diagnostics.error=error.message;console.error(error);});
+function dismissAwakeningCue(failed=false){
+  if(!awakeningCue||awakeningCue.classList.contains('is-rendered'))return;
+  if(failed){awakeningCue.classList.add('is-failed');awakeningCue.querySelector('.awakening-copy').textContent='The apparatus remains hidden. The voice may still answer.';}
+  awakeningCue.classList.add('is-rendered');
+  setTimeout(()=>{awakeningCue.hidden=true;},700);
+}
+init().catch(error=>{dismissAwakeningCue(true);window.encounterUI?.setEntranceComplete(true);label.textContent='3D preview unavailable — voice audition still works.';diagnostics.error=error.message;console.error(error);});
 
 async function init(){
   const scene=new THREE.Scene();scene.background=new THREE.Color('#000000');
@@ -207,7 +213,7 @@ async function init(){
   }
   function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;const half=Math.max(1.66,1.10*h/w);restingFov=2*Math.atan(half/visitorPosition.distanceTo(lookTarget))*180/Math.PI;camera.fov=restingFov;camera.updateProjectionMatrix();}
   new ResizeObserver(resize).observe(host);resize();
-  let elapsed=0,lastUi=0;
+  let elapsed=0,lastUi=0,firstCreatureFrame=true;
   renderer.setAnimationLoop(()=>{
     const now=performance.now(),dt=Math.min((now-last)/1000,.05);last=now;elapsed+=dt;
     let current={open:0,rms:0,speaking:false};
@@ -232,6 +238,7 @@ async function init(){
     controls.update();model.update(p,camera.position,entry.complete);diagnostics.gaze=model.state.gaze;
     // The Blender pivot carries the whole head, wig and terminals together.
     updateLaboratoryLights(elapsed);updateLightning(now);renderer.render(scene,camera);
+    if(firstCreatureFrame){firstCreatureFrame=false;dismissAwakeningCue();}
     diagnostics.frames++;diagnostics.pose=p;diagnostics.speaking=current.speaking;diagnostics.direction=direction;diagnostics.phase=phase;diagnostics.queuedSegments=timeline.segments.length;
     diagnostics.triangles=renderer.info.render.triangles;
     if(now-lastUi>100){lastUi=now;

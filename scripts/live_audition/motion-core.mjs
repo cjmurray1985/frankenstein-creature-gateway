@@ -24,12 +24,14 @@ export const clamp = (v,lo=0,hi=1)=>Math.max(lo,Math.min(hi,v));
 // Cinematic staging assumptions, not dimensions measured from the KIRI scan.
 export const ENCOUNTER_STAGE=Object.freeze({creatureFeet:8,visitorFeet:71/12,eyeInsetFeet:4/12,distanceFeet:5,headCenterFeet:7,waistFeet:4.2,unitsPerFoot:3.7/2});
 export function entrancePose(seconds,reduced=false){
-  const t=reduced?1:clamp((seconds-.45)/4.6),progress=t*t*t*(t*(6*t-15)+10);
-  // Keep only a faint silhouette through the sit-up (ends at 5.05s),
-  // hold upright for 0.65s, then ease into the full portrait illumination.
-  const silhouette=reduced?1:clamp((seconds-1.2)/2.8);
+  // Begin the hinge on the first rendered frame. The prior 450ms dead hold
+  // made a successfully loaded mobile scene appear stalled.
+  const t=reduced?1:clamp(seconds/4.6),progress=t*t*t*(t*(6*t-15)+10);
+  // A readable low-key silhouette is present immediately and strengthens as
+  // the body rises. Full portrait light still waits until after the sit-up.
+  const silhouette=reduced?1:clamp(seconds/2.8);
   const r=reduced?1:clamp((seconds-5.7)/2.8);
-  const reveal=.16*silhouette*silhouette*(3-2*silhouette)+.84*r*r*(3-2*r);
+  const reveal=reduced?1:.22+.12*silhouette*silhouette*(3-2*silhouette)+.66*r*r*(3-2*r);
   // Keep the lids shut through the sit-up. Once upright, snap them open for
   // a brief startle, then ease back to the normal resting opening.
   const upright=progress>=1;

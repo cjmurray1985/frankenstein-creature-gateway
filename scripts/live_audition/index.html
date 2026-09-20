@@ -5,7 +5,13 @@
 <link rel="stylesheet" href="/audition.css">
 <script type="importmap">{"imports":{"three":"/vendor/three.module.js"}}</script>
 <main class="encounter" aria-label="Creature encounter">
-  <section class="stage-shell" aria-label="Creature simulation"><div id="creature-stage"></div></section>
+  <section class="stage-shell" aria-label="Creature simulation">
+    <div id="creature-stage"></div>
+    <div id="awakening-cue" class="awakening-cue" role="status" aria-live="polite">
+      <span class="awakening-current" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="awakening-copy">The current gathers in the laboratory…</span>
+    </div>
+  </section>
   <button id="open-menu" class="secondary menu-toggle" aria-haspopup="dialog" aria-controls="encounter-menu" aria-expanded="false" aria-label="Menu" title="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
   <button id="start" class="encounter-start" hidden>Speak to the Creature</button>
   <p id="stage-warning" class="stage-warning" role="alert" hidden></p>

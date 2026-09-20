@@ -80,8 +80,9 @@ test('linked eyelids can close fully and reopen without disturbing gaze or mouth
 
 test('entrance rises continuously from darkness and settles without looping',()=>{
   let previous=entrancePose(0);
-  assert.equal(previous.reveal,0);assert.equal(previous.complete,false);
+  assert.equal(previous.reveal,.22);assert.equal(previous.complete,false);
   assert.equal(previous.lean,-Math.PI/2);assert.equal(previous.headPitch,0);
+  assert.ok(entrancePose(.1).progress>0);
   const radius=(ENCOUNTER_STAGE.headCenterFeet-ENCOUNTER_STAGE.waistFeet)*ENCOUNTER_STAGE.unitsPerFoot;
   let priorHeight=0,priorDepth=-radius;
   for(let frame=1;frame<=540;frame++){
@@ -108,13 +109,13 @@ test('reduced-motion skips the rise and staging preserves requested relative sca
   assert.ok(elevation>15&&elevation<18);
 });
 
-test('entrance holds a silhouette until after the rise, then reveals the portrait',()=>{
-  assert.equal(entrancePose(1.2).reveal,0);
-  assert.equal(entrancePose(4).reveal,.16);
+test('entrance is immediately legible, then holds low-key light until after the rise',()=>{
+  assert.ok(entrancePose(1.2).reveal>.22);
+  assert.ok(Math.abs(entrancePose(4).reveal-.34)<1e-12);
   const upright=entrancePose(5.1);
-  assert.equal(upright.progress,1);assert.equal(upright.reveal,.16);assert.equal(upright.complete,false);
-  assert.equal(entrancePose(5.7).reveal,.16);
-  assert.ok(Math.abs(entrancePose(7.1).reveal-.58)<1e-12);
+  assert.equal(upright.progress,1);assert.ok(Math.abs(upright.reveal-.34)<1e-12);assert.equal(upright.complete,false);
+  assert.ok(Math.abs(entrancePose(5.7).reveal-.34)<1e-12);
+  assert.ok(Math.abs(entrancePose(7.1).reveal-.67)<1e-12);
   assert.equal(entrancePose(8.5).reveal,1);assert.equal(entrancePose(8.5).complete,true);
   assert.equal('lightningCue' in upright,false);
 });

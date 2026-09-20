@@ -4,6 +4,15 @@
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,sans-serif}
 .encounter,.stage-shell,#creature-stage{position:fixed;inset:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:#000}
 #creature-stage canvas{display:block;width:100%;height:100%;touch-action:none}
+.awakening-cue{position:fixed;z-index:1;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:13px;padding:0 24px max(15vh,calc(94px + env(safe-area-inset-bottom)));pointer-events:none;color:#9aac91;font:13px/1.4 "Special Elite",monospace;letter-spacing:.085em;text-align:center;text-shadow:0 0 14px #6f987966,0 1px 5px #000;opacity:1;transition:opacity 650ms ease}
+.awakening-cue::before{content:"";position:absolute;z-index:-1;inset:0;background:radial-gradient(ellipse 60% 24% at 50% 72%,#254b3b40 0%,#102c2730 34%,#07161216 58%,transparent 76%),linear-gradient(180deg,#000 0%,#010302 52%,#06110d 100%);animation:laboratory-breath 2100ms ease-in-out infinite alternate}
+.awakening-cue::after{content:"";position:absolute;z-index:-1;left:8%;right:8%;bottom:0;height:38%;background:linear-gradient(105deg,transparent 0 20%,#4f8d7330 44%,#9fc7a428 49%,#2d668035 54%,transparent 79%);filter:blur(22px);opacity:.38;animation:electrical-haze 2700ms steps(1,end) infinite}
+.awakening-current{width:min(260px,62vw);height:10px;display:flex;align-items:center;justify-content:center;gap:7px}
+.awakening-current i{display:block;height:1px;background:#719b7d;box-shadow:0 0 8px #5ab787,0 0 18px #2f6c8d;opacity:.58}.awakening-current i:first-child,.awakening-current i:last-child{width:38%}.awakening-current i:nth-child(2){width:5px;height:5px;border-radius:50%;background:#c1d6ac;box-shadow:0 0 8px #b9e5b2,0 0 24px #50a79e;animation:current-pulse 900ms ease-in-out infinite alternate}
+.awakening-cue.is-rendered{opacity:0}.awakening-cue.is-failed .awakening-current{display:none}
+@keyframes laboratory-breath{from{opacity:.56}to{opacity:1}}
+@keyframes electrical-haze{0%,65%,100%{opacity:.22}66%{opacity:.64}68%{opacity:.31}72%{opacity:.52}}
+@keyframes current-pulse{from{transform:scale(.72);opacity:.58}to{transform:scale(1.2);opacity:1}}
 button{min-height:44px;border:1px solid #4d5f45;background:var(--accent);color:#152011;font:600 13px system-ui;padding:10px 16px;border-radius:4px;cursor:pointer}
 button:hover{filter:brightness(1.12)}button:disabled{opacity:.4;cursor:default}
 .secondary{background:transparent;color:var(--ink);border-color:var(--line);font-weight:400}
@@ -44,7 +53,7 @@ input[type=checkbox]{accent-color:var(--accent)}
   .view-controls>label,summary{min-height:44px;display:flex;align-items:center}
   .lighting-controls input[type=range]{min-height:44px}
 }
-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}.awakening-cue::before,.awakening-cue::after,.awakening-current i:nth-child(2){animation:none}}
 
 .lighting-field{display:flex;align-items:center;gap:8px;max-width:100%}
 
