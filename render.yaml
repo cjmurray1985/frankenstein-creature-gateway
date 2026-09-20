@@ -1,7 +1,7 @@
 # Copy to the root of the private deployment bundle as render.yaml.
 services:
   - type: web
-    name: creature-family-encounter
+    name: creature-encounter
     runtime: docker
     plan: starter
     dockerfilePath: ./scripts/family_encounter/Dockerfile
