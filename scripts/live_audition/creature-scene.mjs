@@ -41,12 +41,32 @@ async function init(){
   scene.add(ambient,key,rim,fill);rim.position.set(3,2,-3);fill.position.set(2,0,5);
   const lightning=new THREE.DirectionalLight(0xdceaff,0);lightning.position.set(-2,4,5);scene.add(lightning);
   const lightningControl=document.querySelector('#lighting-lightning'),testLightning=document.querySelector('#test-lightning');
-  let lightningStarted=-Infinity,lightningDuration=100,lightningPower=10,lightningCount=0,lightningPeak=0;
+  let lightningStarted=-Infinity,lightningDuration=100,lightningPower=10,lightningCount=0,lightningPeak=0,entranceCue=false,entranceCuePlayed=false,thunderContext=null;
   let nextLightning=performance.now()+18000+Math.random()*22000;
   function strike(now){
     lightningStarted=now;lightningDuration=80+Math.random()*40;lightningPower=9+Math.random()*3;
     lightning.position.set(Math.random()<.5?-3:3,4,5);lightningCount++;lightningPeak=0;
     nextLightning=now+18000+Math.random()*22000;
+  }
+  function playEntranceThunder(){
+    // This is deliberately synthesized locally: no audio asset or network
+    // request is needed during the password-to-laboratory transition.
+    try{
+      thunderContext=thunderContext||new AudioContext();
+      const ctx=thunderContext;
+      const play=()=>{
+        const now=ctx.currentTime+.02;
+        const crack=ctx.createBufferSource(),buffer=ctx.createBuffer(1,Math.floor(ctx.sampleRate*.065),ctx.sampleRate),data=buffer.getChannelData(0);
+        for(let i=0;i<data.length;i++){const fall=1-i/data.length;data[i]=(Math.random()*2-1)*fall*fall;}
+        crack.buffer=buffer;
+        const crackGain=ctx.createGain();crackGain.gain.setValueAtTime(.22,now);crackGain.gain.exponentialRampToValueAtTime(.001,now+.065);crack.connect(crackGain).connect(ctx.destination);crack.start(now);crack.stop(now+.07);
+        const rumble=ctx.createOscillator(),rumbleGain=ctx.createGain(),filter=ctx.createBiquadFilter();
+        rumble.type='sawtooth';rumble.frequency.setValueAtTime(74,now+.06);rumble.frequency.exponentialRampToValueAtTime(31,now+1.55);
+        filter.type='lowpass';filter.frequency.value=180;rumbleGain.gain.setValueAtTime(.0001,now+.06);rumbleGain.gain.exponentialRampToValueAtTime(.055,now+.18);rumbleGain.gain.exponentialRampToValueAtTime(.0001,now+1.6);
+        rumble.connect(filter).connect(rumbleGain).connect(ctx.destination);rumble.start(now+.06);rumble.stop(now+1.65);
+      };
+      if(ctx.state==='suspended')ctx.resume().then(play).catch(()=>{});else play();
+    }catch{}
   }
   const lightingPresets={
     // Low frontal green light catches the underside of the brow and nose;
@@ -77,8 +97,9 @@ async function init(){
     if(lightingSelect.value==='laboratory'&&lightningControl.checked&&!reduced.matches)strike(performance.now());
   });
   function updateLightning(now){
-    const enabled=lightingSelect.value==='laboratory'&&lightningControl.checked&&!reduced.matches&&!document.hidden&&entranceDone;
-    if(!enabled){lightningStarted=-Infinity;nextLightning=now+18000+Math.random()*22000;}
+    const cue=entranceCue&&now-lightningStarted<lightningDuration+50;
+    const enabled=lightingSelect.value==='laboratory'&&lightningControl.checked&&!reduced.matches&&!document.hidden&&(entranceDone||cue);
+    if(!enabled){lightningStarted=-Infinity;entranceCue=false;nextLightning=now+18000+Math.random()*22000;}
     else if(entranceDone&&now>=nextLightning)strike(now);
     const age=now-lightningStarted;
     // One short crack, not a repeating strobe. Use wall time so a slow frame
@@ -127,12 +148,15 @@ async function init(){
     // preserves that physical arc instead of creating an artificial zoom.
     const fov=restingFov*value.framing;if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
     if(value.complete)entranceDone=true;
+    if(!entranceCuePlayed&&!reduced.matches&&value.progress>=.78){
+      entranceCuePlayed=true;entranceCue=true;strike(now);playEntranceThunder();
+    }
     window.encounterUI?.setEntranceComplete(value.complete);
     diagnostics.entrance=value;host.dataset.entrance=JSON.stringify(value);return value;
   }
   if(document.querySelector('#start').disabled)finishEntrance();
   updateEntrance(entranceStarted);
-  replayEntrance.onclick=()=>{if(document.querySelector('#start').disabled)return;cancelStudy();resetView();entranceStarted=performance.now();entranceDone=false;lightningStarted=-Infinity;updateEntrance(entranceStarted);document.querySelector('#encounter-menu').close();};
+  replayEntrance.onclick=()=>{if(document.querySelector('#start').disabled)return;cancelStudy();resetView();entranceStarted=performance.now();entranceDone=false;entranceCue=false;entranceCuePlayed=false;lightningStarted=-Infinity;updateEntrance(entranceStarted);document.querySelector('#encounter-menu').close();};
   document.querySelector('#wireframe').onchange=e=>model.group.traverse(o=>{if(o.isMesh)for(const m of (Array.isArray(o.material)?o.material:[o.material]))m.wireframe=e.target.checked;});
   const meters=document.querySelector('#mechanism-meters');
   for(const [id,info] of Object.entries(RIG)){
