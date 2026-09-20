@@ -1,0 +1,58 @@
+@font-face{font-family:"Special Elite";src:url("/assets/special-elite.ttf") format("truetype");font-style:normal;font-weight:400;font-display:swap}
+:root{color-scheme:dark;--bg:#000;--surface:#111714;--line:#2d3931;--ink:#e5e9dc;--muted:#a2ada0;--accent:#b9cf8c}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,sans-serif}
+.encounter,.stage-shell,#creature-stage{position:fixed;inset:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:#000}
+#creature-stage canvas{display:block;width:100%;height:100%;touch-action:none}
+button{min-height:44px;border:1px solid #4d5f45;background:var(--accent);color:#152011;font:600 13px system-ui;padding:10px 16px;border-radius:4px;cursor:pointer}
+button:hover{filter:brightness(1.12)}button:disabled{opacity:.4;cursor:default}
+.secondary{background:transparent;color:var(--ink);border-color:var(--line);font-weight:400}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.menu-toggle{position:fixed;z-index:2;top:max(20px,env(safe-area-inset-top));right:max(20px,env(safe-area-inset-right));background:#090d0bc9;color:#b8c1b5;border-color:transparent;width:44px;padding:10px;display:grid;place-items:center}
+.encounter-start{position:fixed;z-index:2;bottom:max(28px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);min-width:200px;white-space:nowrap;background:transparent;color:#929582;border-color:transparent;border-radius:1px;font:16px/1.4 "Special Elite",monospace;letter-spacing:.035em;box-shadow:none}
+#encounter-menu{position:fixed;inset:16px 16px 16px auto;margin:0;width:min(440px,calc(100vw - 32px));max-width:none;height:calc(100vh - 32px);height:calc(100dvh - 32px);max-height:none;padding:24px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 16px 80px #000b}
+#encounter-menu::backdrop{background:#0006;backdrop-filter:blur(3px)}
+.menu-heading{position:sticky;top:-24px;z-index:3;background:var(--surface);padding:12px 0;display:flex;align-items:center;justify-content:space-between;gap:16px}.menu-heading h1{font:28px/1.2 Georgia,serif;margin:0}.menu-heading button{font-size:12px}
+.menu-subtitle{color:var(--muted);font-size:12px;margin:6px 0 24px}
+.menu-section+.menu-section,.transcript{border-top:1px solid var(--line);margin-top:24px;padding-top:20px}
+h2{font-size:16px;font-weight:500;margin:0 0 8px}.section-label{font:10px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 5px}
+.voice-name{font:23px Georgia,serif;margin:8px 0 5px}.voice-note{font-size:12px;color:var(--muted);margin:0 0 16px}
+.actions{display:flex;gap:8px}#status{font-size:13px;margin:14px 0 4px;color:var(--accent);overflow-wrap:anywhere}
+.fine,.scope{font-size:11px;color:var(--muted)}.scope{margin-top:16px}.divider{height:1px;background:var(--line);margin:23px 0}
+.direction{display:flex;align-items:center;justify-content:space-between;font-size:12px}.direction strong{text-transform:capitalize;color:var(--accent);font-weight:500}
+.jaw-track{height:3px;background:var(--line);margin:15px 0 6px}#jaw-level{width:0;height:100%;background:var(--accent)}
+audio{width:100%;height:36px;margin:14px 0 0}#output{display:none}
+details{font-size:12px;color:var(--muted);margin-top:18px}summary{cursor:pointer;color:var(--ink);padding:8px 0}details p{margin:8px 0}
+.mechanism-row{display:grid;grid-template-columns:30px 1fr 50px 34px;align-items:center;gap:5px;margin:10px 0;font-size:10px}
+.channel{font-family:ui-monospace,monospace;color:var(--accent)}meter{width:50px;height:6px;accent-color:var(--accent)}output{text-align:right;font:10px ui-monospace,monospace}
+#scene-state{font:12px ui-monospace,monospace;color:var(--accent)}
+.view-controls,.lighting-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:12px;color:var(--muted);margin-top:14px}
+.view-controls button,.lighting-controls button{font-size:12px;padding:8px 10px}
+.lighting-controls{border-top:1px solid var(--line);padding-top:16px}
+.lighting-controls select{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:8px;font:inherit;min-height:44px;max-width:100%}
+.lighting-controls input[type=range]{width:110px;accent-color:var(--accent)}.lighting-controls output{min-width:32px}.flicker-control{display:flex;align-items:center;gap:5px;min-height:44px}
+input[type=checkbox]{accent-color:var(--accent)}
+#captions{white-space:pre-wrap;max-height:280px;overflow:auto;overflow-wrap:anywhere;color:#c8d2c2;font:15px/1.7 Georgia,serif}
+#captions:empty::before{content:'The conversation will appear here.';font:13px system-ui;color:#697869}a{color:var(--accent)}
+@media(max-width:480px),(pointer:coarse){
+  #encounter-menu{top:calc(8px + env(safe-area-inset-top));right:calc(8px + env(safe-area-inset-right));bottom:auto;left:auto;width:min(440px,calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right)));height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));padding:20px}
+  .menu-heading{top:-20px}.menu-heading h1{font-size:24px}.menu-heading button{flex-shrink:0}
+  .menu-toggle{top:calc(12px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right))}
+  .encounter-start{bottom:calc(20px + env(safe-area-inset-bottom))}
+  .lighting-controls select{font-size:16px}
+  .view-controls>label,summary{min-height:44px;display:flex;align-items:center}
+  .lighting-controls input[type=range]{min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+
+.lighting-field{display:flex;align-items:center;gap:8px;max-width:100%}
+
+.menu-toggle:hover{background:#111714cc;border-color:var(--line)}
+.encounter-start::before{transition:opacity 400ms ease;opacity:0;content:"";position:absolute;inset:0;pointer-events:none;border:1px solid;border-image:linear-gradient(109deg,#42483c 0%,#60634f 14%,#191d18 15%,#494d40 17%,#343b2e 43%,#0c100b 45%,#454a3b 48%,#5b604d 72%,#171b14 73%,#414735 76%,#30372b 100%) 1}
+.encounter-start:hover:not(:disabled){background:#82876b09;color:#b0b49e;filter:none}
+.encounter-start:hover:not(:disabled)::before{opacity:.85}
+
+/* Removing hidden after the scene completes starts a fresh fade on each replay. */
+.encounter-start{animation:encounter-invitation 1100ms ease-out both;transition:color 400ms ease,background-color 400ms ease}
+@keyframes encounter-invitation{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.encounter-start{animation:none;transition:none}.encounter-start::before{transition:none}}
