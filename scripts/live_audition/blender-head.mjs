@@ -25,20 +25,12 @@ function fitGazeMaterial(mesh,side){
         vec3 irisColor=texture2D(map,creatureIrisSource+irisDelta*0.62).rgb;
         // Muted gray-olive whites keep the narrow opening from glowing;
         // preserve the photographed iris and pupil for readable eye contact.
-        vec3 scleraColor=vec3(0.18,0.18,0.17);
+        vec3 scleraColor=vec3(0.12,0.13,0.10);
         diffuseColor*=vec4(mix(scleraColor,irisColor,irisMask),1.0);
       #endif
     `);
-    shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`
-      #include <emissivemap_fragment>
-      #ifdef USE_MAP
-        // The sockets remain deeply shadowed, but a tiny sclera-weighted floor
-        // preserves eye contact without casting frontal light across the face.
-        totalEmissiveRadiance+=mix(vec3(0.014,0.014,0.013),irisColor*0.32+vec3(0.004),irisMask);
-      #endif
-    `);
   };
-  material.customProgramCacheKey=()=> 'kiri-fixed-shell-iris-v3';
+  material.customProgramCacheKey=()=> 'kiri-fixed-shell-iris-v2';
   return {mesh,gaze,neutralContact,get calibrated(){return contactCalibrated;},restMatrix:mesh.matrix.clone(),set(x,y,cameraPosition,calibrate=false){
     // Aim each eye independently at the actual visitor camera after all head
     // transforms. Intersect that optical axis with the fixed ellipsoid, then

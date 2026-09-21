@@ -46,11 +46,11 @@ async function init(){
   key.shadow.bias=-.00015;key.shadow.normalBias=.015;key.shadow.camera.updateProjectionMatrix();
   scene.add(ambient,key,rim,fill);rim.position.set(3,2,-3);fill.position.set(2,0,5);
   const lightning=new THREE.DirectionalLight(0xdceaff,0);lightning.position.set(-2,4,5);scene.add(lightning);
-  const neonPurple=new THREE.PointLight(0xa668ff,0,7);neonPurple.position.set(-2,-1.6,2.2);
-  const neonBlue=new THREE.PointLight(0x456dcc,0,7);neonBlue.position.set(2,-.7,1.7);scene.add(neonPurple,neonBlue);
+  const neonGreen=new THREE.PointLight(0x43ffb2,0,7);neonGreen.position.set(-2,-1.8,2.5);
+  const neonBlue=new THREE.PointLight(0x3b8dff,0,7);neonBlue.position.set(2,-.8,1.8);scene.add(neonGreen,neonBlue);
   const lightningControl=document.querySelector('#lighting-lightning'),testLightning=document.querySelector('#test-lightning');
   let lightningStarted=-Infinity,lightningDuration=100,lightningPower=10,lightningCount=0,lightningPeak=0,entranceCue=false,entranceCuePlayed=false,thunderContext=null,sparkStarted=-Infinity,sparkDuration=160,sparkNext=2.5,sparkCount=0;
-  const backgroundBase=new THREE.Color(0x000000),backgroundFlash=new THREE.Color(0x251a38);
+  const backgroundBase=new THREE.Color(0x000000),backgroundFlash=new THREE.Color(0x294b45);
   let nextLightning=performance.now()+18000+Math.random()*22000;
   function strike(now){
     lightningStarted=now;lightningDuration=80+Math.random()*40;lightningPower=9+Math.random()*3;
@@ -78,9 +78,9 @@ async function init(){
     }catch{}
   }
   const lightingPresets={
-    // A low violet side key and purple rear rim trace the brow, nose and jaw.
-    // Minimal neutral fill keeps the eyes readable without flattening the face.
-    laboratory:{sky:0x342d40,ground:0x020204,ambient:.010,key:0x8c789f,power:.82,position:[-2.6,-4.6,1.5],rim:0xa47dca,rimPower:.26,fill:.12,fillColor:0x78718a,fillPosition:[0,.3,4.3]},
+    // Low frontal green light catches the underside of the brow and nose;
+    // restrained fill/rim leave the upper skull and far cheek in darkness.
+    laboratory:{sky:0x627467,ground:0x050706,ambient:.018,key:0xa6c798,power:1.16,position:[-1.2,-5.5,2.0],rim:0x71879c,rimPower:.10,fill:.26,fillColor:0x9baf9e,fillPosition:[0,.2,4]},
     moody:{sky:0xb2bfcd,ground:0x171b20,ambient:.38,key:0xffdfb7,power:1.65,position:[-4,5,2.5],rim:0x88b8d0,rimPower:1.25,fill:.10,background:0x070b0e},
     moonlight:{sky:0x8eacc8,ground:0x10151c,ambient:.28,key:0xb5cee8,power:1.45,position:[-3,4,3],rim:0x779fca,rimPower:1.5,fill:.12,background:0x060a12},
     studio:{sky:0xffffff,ground:0x34382a,ambient:2,key:0xffffff,power:2,position:[-3,4,4],rim:0xffffff,rimPower:0,fill:0,background:0x0c1110},
@@ -135,9 +135,9 @@ async function init(){
     const now=performance.now();
     if(!reduced.matches&&!document.hidden&&t>=sparkNext){sparkStarted=now;sparkDuration=90+Math.random()*150;sparkNext=t+2.8+Math.random()*5.4;sparkCount++;}
     const sparkAge=now-sparkStarted,sparkEnvelope=sparkAge>=0&&sparkAge<sparkDuration?Math.sin(Math.PI*sparkAge/sparkDuration):0;
-    neonPurple.intensity=lightingSelect.value==='laboratory'?(0.012+0.16*sparkEnvelope)*gain:0;
-    neonBlue.intensity=lightingSelect.value==='laboratory'?(0.008+0.10*Math.max(0,sparkEnvelope-.18))*gain:0;
-    diagnostics.lampLevels=[key.intensity,fill.intensity,rim.intensity,neonPurple.intensity,neonBlue.intensity];diagnostics.sparks={count:sparkCount,intensity:sparkEnvelope};
+    neonGreen.intensity=lightingSelect.value==='laboratory'?(0.025+0.22*sparkEnvelope)*gain:0;
+    neonBlue.intensity=lightingSelect.value==='laboratory'?(0.018+0.16*Math.max(0,sparkEnvelope-.18))*gain:0;
+    diagnostics.lampLevels=[key.intensity,fill.intensity,rim.intensity,neonGreen.intensity,neonBlue.intensity];diagnostics.sparks={count:sparkCount,intensity:sparkEnvelope};
   }
   const controls=new OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.enableDamping=true;
   controls.target.copy(lookTarget);controls.minDistance=6.5;controls.maxDistance=14;controls.update();
