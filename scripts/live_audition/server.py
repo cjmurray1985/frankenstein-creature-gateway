@@ -279,6 +279,7 @@ class Handler(BaseHTTPRequestHandler):
             '/vendor/BufferGeometryUtils.js': 'text/javascript; charset=utf-8',
             '/photo-head.mjs': 'text/javascript; charset=utf-8',
             '/assets/head-reference.png': 'image/png',
+            '/assets/mixkit-thunderstorm-and-rain-loop-2402.wav': 'audio/wav',
             '/vendor/three.module.js': 'text/javascript; charset=utf-8',
             '/vendor/three.core.js': 'text/javascript; charset=utf-8',
             '/vendor/OrbitControls.js': 'text/javascript; charset=utf-8',

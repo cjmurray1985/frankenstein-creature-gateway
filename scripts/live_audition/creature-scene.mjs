@@ -3,12 +3,30 @@ import {OrbitControls} from './vendor/OrbitControls.js';
 import {AudioMotion,MechanicalPose,RIG,DIRECTIONS,ENCOUNTER_STAGE,entrancePose,clamp} from './motion-core.mjs';
 import {buildBlenderHead} from './blender-head.mjs';
 
-const host=document.querySelector('#creature-stage'),label=document.querySelector('#scene-state'),awakeningCue=document.querySelector('#awakening-cue');
+const host=document.querySelector('#creature-stage'),label=document.querySelector('#scene-state'),awakeningCue=document.querySelector('#awakening-cue'),laboratoryAmbience=document.querySelector('#laboratory-ambience');
 const timeline=new AudioMotion(),pose=new MechanicalPose();
 let context=null,direction='curious',phase='ready',last=performance.now(),nextBlink=7,blinkStart=-10;
 let referenceAudio=null,referenceSamples=null,referenceEnvelope=null;
 let cancelStudy=()=>{};
 let finishEntrance=()=>{};
+let ambienceStarted=false,ambienceFadeTimer=0;
+function startLaboratoryAmbience(){
+  if(!laboratoryAmbience||ambienceStarted)return;
+  laboratoryAmbience.loop=true;laboratoryAmbience.volume=0;
+  const attempt=laboratoryAmbience.play();
+  if(!attempt?.then)return;
+  attempt.then(()=>{
+    ambienceStarted=true;
+    document.removeEventListener('pointerdown',startLaboratoryAmbience);
+    document.removeEventListener('keydown',startLaboratoryAmbience);
+    document.removeEventListener('touchstart',startLaboratoryAmbience);
+    clearInterval(ambienceFadeTimer);let step=0;
+    ambienceFadeTimer=setInterval(()=>{step++;laboratoryAmbience.volume=Math.min(.035,step*.0035);if(laboratoryAmbience.volume>=.035)clearInterval(ambienceFadeTimer);},160);
+  }).catch(()=>{});
+}
+document.addEventListener('pointerdown',startLaboratoryAmbience,{passive:true});
+document.addEventListener('keydown',startLaboratoryAmbience,{passive:true});
+document.addEventListener('touchstart',startLaboratoryAmbience,{passive:true});
 const diagnostics={ready:false,frames:0,pose:{},speaking:false,renderer:'Three.js r180 / KIRI scan GLB'};
 window.creatureDiagnostics=diagnostics;
 window.creatureSimulation={
@@ -28,6 +46,7 @@ function dismissAwakeningCue(failed=false){
 init().catch(error=>{dismissAwakeningCue(true);window.encounterUI?.setEntranceComplete(true);label.textContent='3D preview unavailable — voice audition still works.';diagnostics.error=error.message;console.error(error);});
 
 async function init(){
+  startLaboratoryAmbience();
   const scene=new THREE.Scene();scene.background=new THREE.Color('#000000');
   const stage=ENCOUNTER_STAGE,unit=stage.unitsPerFoot;
   const visitorPosition=new THREE.Vector3(0,(stage.visitorFeet-stage.eyeInsetFeet-stage.headCenterFeet)*unit,stage.distanceFeet*unit);
@@ -58,24 +77,9 @@ async function init(){
     nextLightning=now+18000+Math.random()*22000;
   }
   function playEntranceThunder(){
-    // This is deliberately synthesized locally: no audio asset or network
-    // request is needed during the password-to-laboratory transition.
-    try{
-      thunderContext=thunderContext||new AudioContext();
-      const ctx=thunderContext;
-      const play=()=>{
-        const now=ctx.currentTime+.02;
-        const crack=ctx.createBufferSource(),buffer=ctx.createBuffer(1,Math.floor(ctx.sampleRate*.065),ctx.sampleRate),data=buffer.getChannelData(0);
-        for(let i=0;i<data.length;i++){const fall=1-i/data.length;data[i]=(Math.random()*2-1)*fall*fall;}
-        crack.buffer=buffer;
-        const crackGain=ctx.createGain();crackGain.gain.setValueAtTime(.22,now);crackGain.gain.exponentialRampToValueAtTime(.001,now+.065);crack.connect(crackGain).connect(ctx.destination);crack.start(now);crack.stop(now+.07);
-        const rumble=ctx.createOscillator(),rumbleGain=ctx.createGain(),filter=ctx.createBiquadFilter();
-        rumble.type='sawtooth';rumble.frequency.setValueAtTime(74,now+.06);rumble.frequency.exponentialRampToValueAtTime(31,now+1.55);
-        filter.type='lowpass';filter.frequency.value=180;rumbleGain.gain.setValueAtTime(.0001,now+.06);rumbleGain.gain.exponentialRampToValueAtTime(.055,now+.18);rumbleGain.gain.exponentialRampToValueAtTime(.0001,now+1.6);
-        rumble.connect(filter).connect(rumbleGain).connect(ctx.destination);rumble.start(now+.06);rumble.stop(now+1.65);
-      };
-      if(ctx.state==='suspended')ctx.resume().then(play).catch(()=>{});else play();
-    }catch{}
+    // The loop is already running as a barely audible laboratory bed. Do not
+    // add a synthetic crack on top of it during the entrance cue.
+    startLaboratoryAmbience();
   }
   const lightingPresets={
     // Low frontal green light catches the underside of the brow and nose;

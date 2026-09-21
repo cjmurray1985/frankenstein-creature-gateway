@@ -22,7 +22,7 @@ STATIC = {'/audition.css', '/creature-scene.mjs', '/motion-core.mjs',
           '/assets/special-elite.ttf', '/vendor/three.module.js',
           '/vendor/three.core.js', '/vendor/GLTFLoader.js',
           '/vendor/BufferGeometryUtils.js', '/vendor/OrbitControls.js',
-          '/assets/head-reference.png', '/rig-notes.md', '/reference.wav'}
+          '/assets/head-reference.png', '/assets/mixkit-thunderstorm-and-rain-loop-2402.wav', '/rig-notes.md', '/reference.wav'}
 SECURITY = {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
             'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
             'Permissions-Policy': 'microphone=(self), camera=(), geolocation=()',

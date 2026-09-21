@@ -124,6 +124,8 @@ Browser lid meshes gain convex padding, a recessed fold and three rows of rounde
 ### Camera-directed pupils (2026-09-20)
 The previous −0.70 vertical gaze bias is removed. Each pupil is projected toward the camera in its own transformed eye space using the fixed ellipsoid and export UV mapping, with bounded emotional offsets retained. Eye shells/lids remain stationary relative to the head. Resting/curious lid closure is 0.58, hopeful 0.50 and engaged 0.55; entrance closure and full blinks remain.
 
+Ambient thunder loop (2026-09-21): the synthetic entrance crack/rumble is replaced by `assets/mixkit-thunderstorm-and-rain-loop-2402.wav`, a user-supplied 44.1 kHz stereo loop. It starts as soon as the authenticated laboratory page initializes, retries after the first user gesture if autoplay is blocked, fades to a 0.035 HTML-audio gain and loops under the encounter. The old one-shot synthesized cue remains disabled; voice playback still uses its own audio path and is not mixed through this bed.
+
 ### Invitation transition polish (2026-09-20)
 Eye opening now spans 4.9–6.0s, before full light at 6.8s. Only after full entrance completion does the CTA fade in over 1.1s. Its worn border fades over 400ms on hover in/out. Replay resets visibility; reduced-motion skips CSS transitions.
 
