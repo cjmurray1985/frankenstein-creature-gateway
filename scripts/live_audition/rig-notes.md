@@ -136,3 +136,5 @@ Framing refinement (2026-09-20): resting vertical half-span 1.66, aim target Y=�
 Silhouette hold (2026-09-20): reveal reaches 0.16 at 4.0s and holds through the 5.05s seated arrival until 5.7s. Full lighting eases in over 5.7–8.5s, then laboratory flicker blends in through 9.7s. CTA waits for completion at 8.5s. Eyelids retain their 3.9–5.0s opening; reduced-motion skips the sequence. This supersedes the earlier 6.8s full-light timing.
 
 Dimmer laboratory preset (2026-09-20): key 1.58, ambient 0.028, rim 0.14, frontal fill 0.44. Directions and timing unchanged; fill is reduced less to preserve eye readability.
+
+Eye texture correction (2026-09-21): both iris/pupil fields now sample the clean right-eye photograph so the cloudy left-eye capture no longer appears. The sclera is lifted modestly for visibility, with three thin, low-contrast red vessel strokes at each outer corner. Generated eyelid shells are multiplied darker and shifted toward a muted brown-violet, while their geometry, closure travel and eye-contact projection remain unchanged.

@@ -4,7 +4,7 @@ import {clamp} from './motion-core.mjs';
 import {eyeContactProjection,neutralizedEyeContact} from './eye-contact.mjs';
 
 // Fixed eye shells: moving iris/pupil sampling cannot move lids or the orbital outline.
-function fitGazeMaterial(mesh,side){
+function fitGazeMaterial(mesh,side,referenceMap){
   const material=mesh.material.clone();mesh.material=material;
   const gaze={value:new THREE.Vector2()};
   mesh.geometry.computeBoundingBox();
@@ -13,24 +13,35 @@ function fitGazeMaterial(mesh,side){
   const localVisitor=new THREE.Vector3();
   const neutralContact=new THREE.Vector2();let contactCalibrated=false;
   // Iris-only centers in the two scan-baked eye maps. The sampled disc excludes lid edges.
-  const source={value:new THREE.Vector2(side==='L'?.455:.512,side==='L'?.495:.515)};
+  const source={value:new THREE.Vector2(.512,.515)};
+  const irisMap=referenceMap||mesh.material.map;
   material.onBeforeCompile=shader=>{
-    shader.uniforms.creatureGaze=gaze;shader.uniforms.creatureIrisSource=source;
-    shader.fragmentShader='uniform vec2 creatureGaze;\nuniform vec2 creatureIrisSource;\n'+shader.fragmentShader;
+    shader.uniforms.creatureGaze=gaze;shader.uniforms.creatureIrisSource=source;shader.uniforms.creatureIrisMap={value:irisMap};shader.uniforms.creatureEyeSide={value:side==='L'?-1:1};
+    shader.fragmentShader='uniform vec2 creatureGaze;\nuniform vec2 creatureIrisSource;\nuniform sampler2D creatureIrisMap;\nuniform float creatureEyeSide;\n'+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`
       #ifdef USE_MAP
         vec2 irisDelta=vMapUv-vec2(0.5)-creatureGaze;
         float irisMask=1.0-smoothstep(0.212,0.223,length(irisDelta));
         // Sample the unoccluded central iris, rather than translating photographed eyelids.
-        vec3 irisColor=texture2D(map,creatureIrisSource+irisDelta*0.62).rgb;
+        vec3 irisColor=texture2D(creatureIrisMap,creatureIrisSource+irisDelta*0.62).rgb;
         // Muted gray-olive whites keep the narrow opening from glowing;
         // preserve the photographed iris and pupil for readable eye contact.
-        vec3 scleraColor=vec3(0.12,0.13,0.10);
+        float cornerX=creatureEyeSide<0.0?.27:.73;
+        vec2 cornerDelta=vMapUv-vec2(cornerX,.5);
+        float towardCenter=creatureEyeSide<0.0?cornerDelta.x:-cornerDelta.x;
+        float reach=smoothstep(.015,.16,towardCenter)*(1.0-smoothstep(.16,.22,towardCenter));
+        float vessel1=(1.0-smoothstep(0.0,.010,abs(cornerDelta.y-.42*cornerDelta.x)))*reach;
+        float vessel2=(1.0-smoothstep(0.0,.008,abs(cornerDelta.y+.28*cornerDelta.x)))*reach;
+        float vessel3=(1.0-smoothstep(0.0,.007,abs(cornerDelta.y-.08*cornerDelta.x)))*reach;
+        float vessels=clamp((vessel1+vessel2+vessel3)*.14,0.0,.20);
+        // Keep the photographed whites visible in the low laboratory light;
+        // the vessels are deliberately narrow and much darker than the sclera.
+        vec3 scleraColor=mix(vec3(0.20,0.20,0.19),vec3(0.38,0.07,0.06),vessels);
         diffuseColor*=vec4(mix(scleraColor,irisColor,irisMask),1.0);
       #endif
     `);
   };
-  material.customProgramCacheKey=()=> 'kiri-fixed-shell-iris-v2';
+  material.customProgramCacheKey=()=> 'kiri-fixed-shell-iris-v4';
   return {mesh,gaze,neutralContact,get calibrated(){return contactCalibrated;},restMatrix:mesh.matrix.clone(),set(x,y,cameraPosition,calibrate=false){
     // Aim each eye independently at the actual visitor camera after all head
     // transforms. Intersect that optical axis with the fixed ellipsoid, then
@@ -66,7 +77,7 @@ function buildEyelids(eye,headMeshes){
     const uv=hit.uv,x=Math.max(0,Math.min(canvas.width-3,Math.round(uv.x*canvas.width))),y=Math.max(0,Math.min(canvas.height-3,Math.round(uv.y*canvas.height)));
     const pixels=ctx.getImageData(x,y,3,3).data,c=[0,0,0];
     for(let i=0;i<pixels.length;i+=4)for(let j=0;j<3;j++)c[j]+=pixels[i+j]/(9*255);
-    return new THREE.Color().setRGB(...c,THREE.SRGBColorSpace);
+    return new THREE.Color().setRGB(...c,THREE.SRGBColorSpace).multiplyScalar(.68).lerp(new THREE.Color('#342b31'),.30);
   }
   const lids=[];const nx=48,ny=18,rimRows=3,rows=ny+rimRows;
   for(const sign of [1,-1]){
@@ -80,7 +91,7 @@ function buildEyelids(eye,headMeshes){
     }
     geometry.setAttribute('position',new THREE.BufferAttribute(positions,3).setUsage(THREE.DynamicDrawUsage));
     geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));geometry.setIndex(indices);
-    const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.74,side:THREE.DoubleSide});
+    const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.82,side:THREE.DoubleSide});
     const mesh=new THREE.Mesh(geometry,material);mesh.name=(sign>0?'Upper':'Lower')+' eyelid '+eye.name;mesh.frustumCulled=false;eye.add(mesh);
     lids.push({geometry,positions,sign});
   }
@@ -207,7 +218,7 @@ export async function buildBlenderHead(){
     };
     material.customProgramCacheKey=()=> 'kiri-throat-black-fade-v1';
   }
-  const eyes={};for(const side of ['L','R'])eyes[side]=fitGazeMaterial(shells[side],side);
+  const eyes={L:fitGazeMaterial(shells.L,'L',shells.R.material.map),R:fitGazeMaterial(shells.R,'R')};
   const lids={};for(const side of ['L','R'])lids[side]=buildEyelids(shells[side],mouthMeshes);
   // A shared entrance fade includes eyes/lids as well as skin, without making
   // overlapping scan geometry transparent or altering its throat gradient.
