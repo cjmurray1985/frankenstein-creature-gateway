@@ -124,7 +124,7 @@ Browser lid meshes gain convex padding, a recessed fold and three rows of rounde
 ### Camera-directed pupils (2026-09-20)
 The previous −0.70 vertical gaze bias is removed. Each pupil is projected toward the camera in its own transformed eye space using the fixed ellipsoid and export UV mapping, with bounded emotional offsets retained. Eye shells/lids remain stationary relative to the head. Resting/curious lid closure is 0.58, hopeful 0.50 and engaged 0.55; entrance closure and full blinks remain.
 
-Ambient thunder loop (2026-09-21): the synthetic entrance crack/rumble is replaced by `assets/mixkit-thunderstorm-and-rain-loop-2402.wav`, a user-supplied 44.1 kHz stereo loop. It starts as soon as the authenticated laboratory page initializes, retries after the first user gesture if autoplay is blocked, fades to a 0.035 HTML-audio gain and loops under the encounter. The old one-shot synthesized cue remains disabled; voice playback still uses its own audio path and is not mixed through this bed.
+Ambient thunder loop (2026-09-21): the synthetic entrance crack/rumble is replaced by `assets/mixkit-thunderstorm-and-rain-loop-2402.wav`, a user-supplied 44.1 kHz stereo loop. It starts as soon as the authenticated laboratory page initializes, retries after the first user gesture if autoplay is blocked, fades to a 0.001 HTML-audio gain on coarse/mobile pointers and 0.012 on desktop, and loops under the encounter. The old one-shot synthesized cue remains disabled; voice playback still uses its own audio path and is not mixed through this bed.
 
 ### Invitation transition polish (2026-09-20)
 Eye opening now spans 4.9–6.0s, before full light at 6.8s. Only after full entrance completion does the CTA fade in over 1.1s. Its worn border fades over 400ms on hover in/out. Replay resets visibility; reduced-motion skips CSS transitions.
@@ -138,3 +138,5 @@ Silhouette hold (2026-09-20): reveal reaches 0.16 at 4.0s and holds through the 
 Dimmer laboratory preset (2026-09-20): key 1.58, ambient 0.028, rim 0.14, frontal fill 0.44. Directions and timing unchanged; fill is reduced less to preserve eye readability.
 
 Eye texture correction (2026-09-21): both iris/pupil fields now sample the clean right-eye photograph so the cloudy left-eye capture no longer appears. The sclera is lifted modestly for visibility, with three thin, low-contrast red vessel strokes at each outer corner. Generated eyelid shells are multiplied darker and shifted toward a muted brown-violet, while their geometry, closure travel and eye-contact projection remain unchanged.
+
+Mobile audio/menu correction (2026-09-23): the ambient thunder loop now fades to 0.001 volume on coarse/mobile pointers (0.012 on desktop), keeping it effectively muted beneath the voice. Active conversation errors remain on the stage warning and close any open dialog; only pre-session errors open the recovery menu. This prevents mobile conversation failures from interrupting the visitor with a menu popup.

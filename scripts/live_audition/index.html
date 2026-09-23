@@ -238,10 +238,12 @@ window.encounterUI={
     sessionHidden=['connected','rendering','closing'].includes(phase)||(active&&phase==='error');
     syncStart();
     startButton.textContent=phase==='connecting'?'Connecting…':'Speak to the Creature';
-    stageWarning.hidden=phase!=='limit';
+    const activeError=phase==='error'&&active;
+    stageWarning.hidden=!(phase==='limit'||activeError);
     if(phase==='limit'){stageWarning.textContent=message;hideMenu();}
+    if(activeError){stageWarning.textContent=message;hideMenu();}
     if(startButton.hidden&&document.activeElement===startButton)openMenu.focus();
-    if(phase==='error')showMenu();
+    if(phase==='error'&&!active)showMenu();
   },
   reset(){sessionHidden=false;syncStart();startButton.textContent='Speak to the Creature';stageWarning.hidden=true;},
 };

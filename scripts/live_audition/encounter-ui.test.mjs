@@ -37,9 +37,10 @@ test('failed connection exposes feedback and keeps retry available after cleanup
   assert.equal(f.document.activeElement,f.node('#close-menu'));
   f.ui.reset();assert.equal(f.node('#start').hidden,false);
 });
-test('active speech error opens recovery menu without exposing a duplicate start',()=>{
+test('active speech error stays on stage without reopening the menu',()=>{
   const f=fixture();f.ui.setPhase('connected',true);f.ui.setPhase('error',true);
-  assert.equal(f.node('#encounter-menu').open,true);assert.equal(f.node('#start').hidden,true);
+  assert.equal(f.node('#encounter-menu').open,false);assert.equal(f.node('#start').hidden,true);
+  assert.equal(f.node('#stage-warning').hidden,false);
 });
 test('menu close restores focus and expanded state without changing encounter state',()=>{
   const f=fixture();f.ui.setPhase('connected',true);

@@ -12,6 +12,7 @@ let finishEntrance=()=>{};
 let ambienceStarted=false,ambienceFadeTimer=0;
 function startLaboratoryAmbience(){
   if(!laboratoryAmbience||ambienceStarted)return;
+  const mobileBed=matchMedia('(pointer:coarse)').matches,targetVolume=mobileBed ? .001 : .012;
   laboratoryAmbience.loop=true;laboratoryAmbience.volume=0;
   const attempt=laboratoryAmbience.play();
   if(!attempt?.then)return;
@@ -21,7 +22,7 @@ function startLaboratoryAmbience(){
     document.removeEventListener('keydown',startLaboratoryAmbience);
     document.removeEventListener('touchstart',startLaboratoryAmbience);
     clearInterval(ambienceFadeTimer);let step=0;
-    ambienceFadeTimer=setInterval(()=>{step++;laboratoryAmbience.volume=Math.min(.035,step*.0035);if(laboratoryAmbience.volume>=.035)clearInterval(ambienceFadeTimer);},160);
+    ambienceFadeTimer=setInterval(()=>{step++;laboratoryAmbience.volume=Math.min(targetVolume,targetVolume*step/10);if(laboratoryAmbience.volume>=targetVolume)clearInterval(ambienceFadeTimer);},160);
   }).catch(()=>{});
 }
 document.addEventListener('pointerdown',startLaboratoryAmbience,{passive:true});
