@@ -9,11 +9,13 @@ let context=null,direction='curious',phase='ready',last=performance.now(),nextBl
 let referenceAudio=null,referenceSamples=null,referenceEnvelope=null;
 let cancelStudy=()=>{};
 let finishEntrance=()=>{};
-let ambienceStarted=false;
+let ambienceStarted=false,ambienceTargetVolume=.001,ambienceSuppressed=false;
+function setLaboratoryAmbienceVolume(){if(laboratoryAmbience)laboratoryAmbience.volume=ambienceSuppressed?0:ambienceTargetVolume;}
 function startLaboratoryAmbience(){
   if(!laboratoryAmbience||ambienceStarted)return;
-  const mobileBed=matchMedia('(pointer:coarse)').matches,targetVolume=mobileBed ? .001 : .012;
-  laboratoryAmbience.loop=true;laboratoryAmbience.volume=targetVolume;
+  const mobileBed=matchMedia('(pointer:coarse)').matches;
+  ambienceTargetVolume=mobileBed ? .001 : .012;
+  laboratoryAmbience.loop=true;setLaboratoryAmbienceVolume();
   const attempt=laboratoryAmbience.play();
   if(!attempt?.then)return;
   attempt.then(()=>{
@@ -32,7 +34,7 @@ window.creatureSimulation={
   attachAudio(c){cancelStudy();context=c;},
   schedule(samples,rate,start,emotion){timeline.enqueue(samples,rate,start,emotion||direction);},
   setDirection(value){if(value)direction=value;},
-  setPhase(value){phase=value;if(value==='connecting')finishEntrance();},
+  setPhase(value){phase=value;ambienceSuppressed=['connecting','connected','rendering'].includes(value);setLaboratoryAmbienceVolume();if(value==='connecting')finishEntrance();},
   stop(){cancelStudy();timeline.clear();pose.jaw=0;referenceAudio=null;},
   bindReference(audio,samples,rate){cancelStudy();referenceAudio=audio;referenceSamples=samples;referenceEnvelope=new AudioMotion();referenceEnvelope.enqueue(samples,rate,0,'curious');},
 };
