@@ -9,11 +9,11 @@ let context=null,direction='curious',phase='ready',last=performance.now(),nextBl
 let referenceAudio=null,referenceSamples=null,referenceEnvelope=null;
 let cancelStudy=()=>{};
 let finishEntrance=()=>{};
-let ambienceStarted=false,ambienceFadeTimer=0;
+let ambienceStarted=false;
 function startLaboratoryAmbience(){
   if(!laboratoryAmbience||ambienceStarted)return;
   const mobileBed=matchMedia('(pointer:coarse)').matches,targetVolume=mobileBed ? .001 : .012;
-  laboratoryAmbience.loop=true;laboratoryAmbience.volume=0;
+  laboratoryAmbience.loop=true;laboratoryAmbience.volume=targetVolume;
   const attempt=laboratoryAmbience.play();
   if(!attempt?.then)return;
   attempt.then(()=>{
@@ -21,8 +21,6 @@ function startLaboratoryAmbience(){
     document.removeEventListener('pointerdown',startLaboratoryAmbience);
     document.removeEventListener('keydown',startLaboratoryAmbience);
     document.removeEventListener('touchstart',startLaboratoryAmbience);
-    clearInterval(ambienceFadeTimer);let step=0;
-    ambienceFadeTimer=setInterval(()=>{step++;laboratoryAmbience.volume=Math.min(targetVolume,targetVolume*step/10);if(laboratoryAmbience.volume>=targetVolume)clearInterval(ambienceFadeTimer);},160);
   }).catch(()=>{});
 }
 document.addEventListener('pointerdown',startLaboratoryAmbience,{passive:true});
