@@ -31,10 +31,10 @@ test('start stays visible during connection and hides once engagement begins',()
   f.ui.setPhase('closing',true);assert.equal(start.hidden,true);
   f.ui.reset();assert.equal(start.hidden,false);assert.equal(start.textContent,'Speak to the Creature');
 });
-test('failed connection exposes feedback and keeps retry available after cleanup',()=>{
+test('failed connection stays on stage and keeps retry available after cleanup',()=>{
   const f=fixture();f.ui.setPhase('error',false);
-  assert.equal(f.node('#encounter-menu').open,true);assert.equal(f.node('#start').hidden,false);
-  assert.equal(f.document.activeElement,f.node('#close-menu'));
+  assert.equal(f.node('#encounter-menu').open,false);assert.equal(f.node('#start').hidden,false);
+  assert.equal(f.node('#stage-warning').hidden,false);
   f.ui.reset();assert.equal(f.node('#start').hidden,false);
 });
 test('active speech error stays on stage without reopening the menu',()=>{
