@@ -3,38 +3,19 @@ import {OrbitControls} from './vendor/OrbitControls.js';
 import {AudioMotion,MechanicalPose,RIG,DIRECTIONS,ENCOUNTER_STAGE,entrancePose,clamp} from './motion-core.mjs';
 import {buildBlenderHead} from './blender-head.mjs';
 
-const host=document.querySelector('#creature-stage'),label=document.querySelector('#scene-state'),awakeningCue=document.querySelector('#awakening-cue'),laboratoryAmbience=document.querySelector('#laboratory-ambience');
+const host=document.querySelector('#creature-stage'),label=document.querySelector('#scene-state'),awakeningCue=document.querySelector('#awakening-cue');
 const timeline=new AudioMotion(),pose=new MechanicalPose();
 let context=null,direction='curious',phase='ready',last=performance.now(),nextBlink=7,blinkStart=-10;
 let referenceAudio=null,referenceSamples=null,referenceEnvelope=null;
 let cancelStudy=()=>{};
 let finishEntrance=()=>{};
-let ambienceStarted=false,ambienceTargetVolume=.001,ambienceSuppressed=false;
-function setLaboratoryAmbienceVolume(){if(laboratoryAmbience)laboratoryAmbience.volume=ambienceSuppressed?0:ambienceTargetVolume;}
-function startLaboratoryAmbience(){
-  if(!laboratoryAmbience||ambienceStarted)return;
-  const mobileBed=matchMedia('(pointer:coarse)').matches;
-  ambienceTargetVolume=mobileBed ? .001 : .012;
-  laboratoryAmbience.loop=true;setLaboratoryAmbienceVolume();
-  const attempt=laboratoryAmbience.play();
-  if(!attempt?.then)return;
-  attempt.then(()=>{
-    ambienceStarted=true;
-    document.removeEventListener('pointerdown',startLaboratoryAmbience);
-    document.removeEventListener('keydown',startLaboratoryAmbience);
-    document.removeEventListener('touchstart',startLaboratoryAmbience);
-  }).catch(()=>{});
-}
-document.addEventListener('pointerdown',startLaboratoryAmbience,{passive:true});
-document.addEventListener('keydown',startLaboratoryAmbience,{passive:true});
-document.addEventListener('touchstart',startLaboratoryAmbience,{passive:true});
 const diagnostics={ready:false,frames:0,pose:{},speaking:false,renderer:'Three.js r180 / KIRI scan GLB'};
 window.creatureDiagnostics=diagnostics;
 window.creatureSimulation={
   attachAudio(c){cancelStudy();context=c;},
   schedule(samples,rate,start,emotion){timeline.enqueue(samples,rate,start,emotion||direction);},
   setDirection(value){if(value)direction=value;},
-  setPhase(value){phase=value;ambienceSuppressed=['connecting','connected','rendering'].includes(value);setLaboratoryAmbienceVolume();if(value==='connecting')finishEntrance();},
+  setPhase(value){phase=value;if(value==='connecting')finishEntrance();},
   stop(){cancelStudy();timeline.clear();pose.jaw=0;referenceAudio=null;},
   bindReference(audio,samples,rate){cancelStudy();referenceAudio=audio;referenceSamples=samples;referenceEnvelope=new AudioMotion();referenceEnvelope.enqueue(samples,rate,0,'curious');},
 };
@@ -47,7 +28,6 @@ function dismissAwakeningCue(failed=false){
 init().catch(error=>{dismissAwakeningCue(true);window.encounterUI?.setEntranceComplete(true);label.textContent='3D preview unavailable — voice audition still works.';diagnostics.error=error.message;console.error(error);});
 
 async function init(){
-  startLaboratoryAmbience();
   const scene=new THREE.Scene();scene.background=new THREE.Color('#000000');
   const stage=ENCOUNTER_STAGE,unit=stage.unitsPerFoot;
   const visitorPosition=new THREE.Vector3(0,(stage.visitorFeet-stage.eyeInsetFeet-stage.headCenterFeet)*unit,stage.distanceFeet*unit);
@@ -76,11 +56,6 @@ async function init(){
     lightningStarted=now;lightningDuration=80+Math.random()*40;lightningPower=9+Math.random()*3;
     lightning.position.set(Math.random()<.5?-3:3,4,5);lightningCount++;lightningPeak=0;
     nextLightning=now+18000+Math.random()*22000;
-  }
-  function playEntranceThunder(){
-    // The loop is already running as a barely audible laboratory bed. Do not
-    // add a synthetic crack on top of it during the entrance cue.
-    startLaboratoryAmbience();
   }
   const lightingPresets={
     // Low frontal green light catches the underside of the brow and nose;
@@ -169,7 +144,7 @@ async function init(){
     const fov=restingFov*value.framing;if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
     if(value.complete)entranceDone=true;
     if(!entranceCuePlayed&&!reduced.matches&&value.progress>=.78){
-      entranceCuePlayed=true;entranceCue=true;strike(now);playEntranceThunder();
+      entranceCuePlayed=true;entranceCue=true;strike(now);
     }
     window.encounterUI?.setEntranceComplete(value.complete);
     diagnostics.entrance=value;host.dataset.entrance=JSON.stringify(value);return value;
