@@ -100,32 +100,27 @@ async function connectLiveDsp(track,remoteStream){
   dspModuleReady=dspModuleReady||audioContext.audioWorklet.addModule('/mourning-colossus-worklet.js');
   await dspModuleReady;stopLiveDsp();
   const stream=remoteStream||new MediaStream([track]);
-  const media=document.createElement('audio');media.autoplay=true;media.playsInline=true;media.volume=0;media.srcObject=stream;
+  const media=document.createElement('audio');media.autoplay=true;media.playsInline=true;media.muted=true;media.volume=0;media.srcObject=stream;
   const source=audioContext.createMediaStreamSource(stream);
   const deep=mode.value==='builtin_dsp_deep',clear=mode.value==='builtin_dsp_natural_clear',natural=mode.value==='builtin_dsp_natural',matched=mode.value==='builtin_dsp_match';
   const shifter=new AudioWorkletNode(audioContext,'mourning-colossus-pitch',{numberOfInputs:1,numberOfOutputs:2,outputChannelCount:[1,1],channelCount:1,processorOptions:{variant:deep?'deep':'standard'}});
   const dry=audioContext.createGain(),mainHigh=audioContext.createBiquadFilter(),mainLow=audioContext.createBiquadFilter(),presence=audioContext.createBiquadFilter(),mainGain=audioContext.createGain();
-  const airHigh=audioContext.createBiquadFilter(),airDelay=audioContext.createDelay(.25),airGain=audioContext.createGain();
   const subLow=audioContext.createBiquadFilter(),subHigh=audioContext.createBiquadFilter(),subGain=audioContext.createGain(),mix=audioContext.createGain();
   const compressor=audioContext.createDynamicsCompressor(),makeup=audioContext.createGain(),limiter=audioContext.createDynamicsCompressor();
-  const rawMeter=audioContext.createAnalyser(),outputMeter=audioContext.createAnalyser(),silentMeter=audioContext.createGain();silentMeter.gain.value=0;rawMeter.fftSize=256;outputMeter.fftSize=256;
+  const rawMeter=audioContext.createAnalyser(),outputMeter=audioContext.createAnalyser();rawMeter.fftSize=256;outputMeter.fftSize=256;
   // Unlike the offline FFmpeg chain, the real-time pitch shifter carries a
   // bounded look-behind buffer. A parallel dry layer therefore arrives early
   // and sounds like a second speaker. Keep it silent unless fail-open is needed.
   dry.gain.value=0;mainHigh.type='highpass';mainHigh.frequency.value=32;mainLow.type='lowpass';mainLow.frequency.value=10200;presence.type='highshelf';presence.frequency.value=2500;presence.gain.value=deep?3:clear?4:natural?5:matched?9.5:0;mainGain.gain.value=.94;
-  // Preserve only unshifted air, breath and consonant edges. The pitch core's
-  // look-behind is ~150 ms, so this narrow layer is delayed into alignment and
-  // cannot read as the early, full-band second voice removed in the prior pass.
-  airHigh.type='highpass';airHigh.frequency.value=(deep||clear)?4200:3200;airDelay.delayTime.value=.15;airGain.gain.value=deep?.06:clear?.06:natural?.14:0;
   subLow.type='lowpass';subLow.frequency.value=(deep||clear)?1600:2100;subHigh.type='highpass';subHigh.frequency.value=28;subGain.gain.value=(deep||clear)?.02:(natural||matched)?.03:.10;
   compressor.threshold.value=-18.4;compressor.ratio.value=2;compressor.attack.value=.02;compressor.release.value=.24;makeup.gain.value=deep?3.2:clear?3.3:natural?3.4:matched?3.75:2.2;
   limiter.threshold.value=-2;limiter.knee.value=0;limiter.ratio.value=20;limiter.attack.value=.005;limiter.release.value=.1;
   shifter.onprocessorerror=()=>{dry.gain.setValueAtTime(1,audioContext.currentTime);window.auditionState.dspFallback=true;state('connected','Local pitch processor stopped; playing the raw GPT-Live voice.');};
-  source.connect(rawMeter).connect(silentMeter).connect(audioContext.destination);source.connect(dry).connect(mix);source.connect(airHigh).connect(airDelay).connect(airGain).connect(mix);source.connect(shifter);shifter.connect(mainHigh,0,0);mainHigh.connect(mainLow).connect(presence).connect(mainGain).connect(mix);shifter.connect(subLow,1,0);subLow.connect(subHigh).connect(subGain).connect(mix);mix.connect(compressor).connect(makeup).connect(limiter).connect(outputMeter).connect(audioContext.destination);
+  source.connect(rawMeter);source.connect(dry).connect(mix);source.connect(shifter);shifter.connect(mainHigh,0,0);mainHigh.connect(mainLow).connect(presence).connect(mainGain).connect(mix);shifter.connect(subLow,1,0);subLow.connect(subHigh).connect(subGain).connect(mix);mix.connect(compressor).connect(makeup).connect(limiter).connect(outputMeter).connect(audioContext.destination);
   liveDspMedia=media;await media.play();
   const rawBuffer=new Float32Array(rawMeter.fftSize),outputBuffer=new Float32Array(outputMeter.fftSize);
   liveDspMeterTimer=setInterval(()=>{const raw=rms(rawMeter,rawBuffer),processed=rms(outputMeter,outputBuffer);status.dataset.dspRawRms=raw.toFixed(6);status.dataset.dspOutputRms=processed.toFixed(6);status.dataset.dspRawPeakRms=Math.max(raw,Number(status.dataset.dspRawPeakRms||0)).toFixed(6);status.dataset.dspOutputPeakRms=Math.max(processed,Number(status.dataset.dspOutputPeakRms||0)).toFixed(6);const mouthLevel=Math.max(0,Math.min(1,(processed-.009)*7.5));window.creatureSimulation?.setLiveAudioLevel(mouthLevel,processed>.012);},100);
-  liveDspNodes=[source,shifter,dry,airHigh,airDelay,airGain,mainHigh,mainLow,presence,mainGain,subLow,subHigh,subGain,mix,compressor,makeup,limiter,rawMeter,outputMeter,silentMeter];
+  liveDspNodes=[source,shifter,dry,mainHigh,mainLow,presence,mainGain,subLow,subHigh,subGain,mix,compressor,makeup,limiter,rawMeter,outputMeter];
   window.auditionState.dspEstimatedBufferMs=150;
 }
 function interruptEleven(){speechGeneration++;clearTimeout(speechTimer);speechText='';speechQueue=[];speechStarted=false;speechInputEnded=false;speechIdle=false;if(speechSocket){try{speechSocket.send(JSON.stringify({type:'cancel'}));}catch{}speechSocket.close();speechSocket=null;}if(elevenConversation)stopElevenAgent();stopScheduledAudio();audio.pause();audio.currentTime=0;audio.removeAttribute('src');audio.load();}
