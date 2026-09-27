@@ -241,9 +241,18 @@ class Gateway:
             return web.Response(status=403)
         async with self.lock:
             if request.path in ('/logout', '/stop'):
-                if sid == self.owner:
-                    await self.upstream_request('POST', '/stop', {'token':self.token})
+                owned = sid == self.owner
+                if owned:
+                    # Release the family slot before asking the loopback engine
+                    # to stop. A provider stop can hang during a mobile tab
+                    # teardown; holding the gateway lock there makes the next
+                    # tap wait until Render returns a proxy 502.
+                    self.owner = None
                     self.until = 0
+                    try:
+                        await asyncio.wait_for(self.upstream_request('POST', '/stop', {'token':self.token}), timeout=4)
+                    except Exception:
+                        pass
                 if request.path == '/logout':
                     self.store.revoke(sid)
                     response = web.Response(status=303, headers={'Location':'/login'})
