@@ -232,7 +232,17 @@ class Gateway:
                 status = json.loads(data)
                 if not status.get('active'):
                     self.until = 0
-                return web.json_response({'active': bool(status.get('active')), 'stop_requested': bool(status.get('stop_requested'))})
+                # Forward only the bounded presentation state needed by the
+                # browser. Keep provider events, transcripts and diagnostics
+                # private to the loopback engine.
+                return web.json_response({
+                    'active': bool(status.get('active')),
+                    'stop_requested': bool(status.get('stop_requested')),
+                    'emotion': status.get('emotion'),
+                    'emotion_revision': int(status.get('emotion_revision', 0) or 0),
+                    'cue': status.get('cue', 'none'),
+                    'cue_revision': int(status.get('cue_revision', 0) or 0),
+                })
             if request.path in STATIC:
                 code, body, media = await self.upstream_request('GET', request.path)
                 return web.Response(status=code, body=body, headers={'Content-Type':media})
