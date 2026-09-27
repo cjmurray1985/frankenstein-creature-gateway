@@ -263,11 +263,14 @@ class Gateway:
             if code != 201:
                 provider_code = None
                 provider_reason = None
+                provider_detail = None
                 try:
                     provider_error = json.loads(data).get('error', {})
                     if isinstance(provider_error, dict):
                         provider_code = provider_error.get('code')
-                        provider_message = str(provider_error.get('message', '')).lower()
+                        raw_provider_message = re.sub(r'[\r\n\t]+', ' ', str(provider_error.get('message', ''))).strip()
+                        provider_detail = re.sub(r'(?i)(bearer\s+|authorization\s*[:=]\s*|token\s*[:=]\s*|sdp\s*[:=]\s*)\S+', r'\1[redacted]', raw_provider_message)[:240] or None
+                        provider_message = raw_provider_message.lower()
                         if 'audio media section' in provider_message:
                             provider_reason = 'missing_audio_media'
                         elif 'offer' in provider_message or 'sdp' in provider_message:
@@ -284,7 +287,7 @@ class Gateway:
                     message = 'The hosted Live session offer was rejected.'
                 else:
                     message = 'The hosted voice service is temporarily unavailable.'
-                return web.json_response({'error':message,'provider_status':code,'provider_code':provider_code,'provider_reason':provider_reason}, status=503)
+                return web.json_response({'error':message,'provider_status':code,'provider_code':provider_code,'provider_reason':provider_reason,'provider_detail':provider_detail}, status=503)
             answer = json.loads(data)['transport']['sdp']
             if not isinstance(answer, str) or not answer.startswith('v=0'):
                 raise ValueError('Upstream returned an invalid WebRTC answer')
