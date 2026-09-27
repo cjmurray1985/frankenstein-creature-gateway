@@ -213,6 +213,12 @@ class Gateway:
                 page = await self.backend_token()
                 page = page.replace("const token='"+self.token+"'", "const token='"+csrf+"'")
                 page = page.replace('ws://localhost:8768/speech?token=', "${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/speech?token=")
+                # The public family gateway deliberately pins the base voice to
+                # Vesper. Keep the disabled selector truthful so its submitted
+                # value cannot trip the gateway's allowlist with the local
+                # audition's Cinder default.
+                page = re.sub(r'(<option value="(?:ripple|stone|meridian|beacon|cinder)" )selected', r'\1', page)
+                page = re.sub(r'(<option value="vesper")(?=>)', r'\1 selected', page, count=1)
                 page = page.replace('Ready. Up to twenty minutes per encounter.', 'Ready. Up to twenty minutes per encounter. One visitor at a time.')
                 page = page.replace('</dialog>', '<form method="post" action="/logout"><input type="hidden" name="token" value="'+csrf+'"><button class="secondary">Lock the laboratory</button></form></dialog>')
                 return web.Response(text=page, content_type='text/html')
