@@ -257,6 +257,12 @@ class Gateway:
             if code != 201:
                 return web.json_response({'error':'The Creature is unavailable. Please try again shortly.'}, status=503)
             answer = json.loads(data)['transport']['sdp']
+            if not isinstance(answer, str) or not answer.startswith('v=0'):
+                raise ValueError('Upstream returned an invalid WebRTC answer')
+            # Keep the provider's SDP semantically identical while normalizing
+            # line endings. Safari rejects some otherwise valid answers when a
+            # proxy has converted CRLF to lone LF.
+            answer = answer.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\r\n').strip() + '\r\n'
             self.owner, self.until, self.replies = sid, time.monotonic()+SESSION_SECONDS, 0
             # Only SDP is needed. Never expose a provider session credential.
             return web.json_response({'transport':{'sdp':answer}}, status=201)

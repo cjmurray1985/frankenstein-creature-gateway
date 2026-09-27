@@ -84,9 +84,14 @@ let elevenConversation=null, elevenMeterTimer=null, elevenSpeaking=false, eleven
 let liveDspNodes=[],liveDspMedia=null,liveDspMeterTimer,dspModuleReady;
 let speechInputEnded=false,speechIdle=false;
 let visitorText='',visitorFinished=false,speechEmotion='curious',speechCue='none',referenceDecode=null;
-let connectionAttempt=0;
+let connectionAttempt=0,startupStage='idle';
 window.auditionState={phase:'ready',audioReceived:false};
 function state(phase,message){window.auditionState.phase=phase;status.textContent=message;window.creatureSimulation?.setPhase(phase);window.encounterUI?.setPhase(phase,ready,message);}
+function stage(label){startupStage=label;window.auditionState.startupStage=label;}
+function normalizedSdp(value){
+  // Safari is stricter than Chromium about SDP line endings.
+  return value.replace(/\r\n/g,'\n').replace(/\r/g,'\n').replace(/\n/g,'\r\n').trim()+'\r\n';
+}
 function stopScheduledAudio(){for(const source of speechSources){try{source.stop();}catch{}}speechSources.clear();nextAudioTime=0;window.creatureSimulation?.stop();}
 function stopLiveDsp(){clearInterval(liveDspMeterTimer);liveDspMeterTimer=null;if(liveDspMedia){liveDspMedia.pause();liveDspMedia.srcObject=null;liveDspMedia=null;}for(const node of liveDspNodes){try{node.port?.postMessage({type:'reset'});node.disconnect();}catch{}}liveDspNodes=[];}
 async function stopElevenAgent(){clearInterval(elevenMeterTimer);elevenMeterTimer=null;elevenSpeaking=false;window.creatureSimulation?.setLiveAudioLevel(0,false);const conversation=elevenConversation;elevenConversation=null;if(conversation){try{await conversation.endSession();}catch{}}}
@@ -249,21 +254,22 @@ async function signalStop(){await fetch('/stop',{method:'POST',headers:{'Content
 function end(){if(closing)return;closing=true;stop.disabled=true;microphone?.getTracks().forEach(t=>t.stop());interruptEleven();if(mode.value==='elevenagents'){state('ended','Ended.');cleanup();return;}state('closing','Ending audition…');signalStop();if(channel?.readyState==='open')channel.send(JSON.stringify({type:'session.close'}));closeTimer=setTimeout(()=>{state('ended','Ended. Final usage confirmation unavailable.');cleanup();},15000);}
 start.onclick=async()=>{
 const attempt=++connectionAttempt;
-start.disabled=true;stop.disabled=false;voice.disabled=true;mode.disabled=true;stylePreset.disabled=true;closing=false;finalized=false;visitorText='';visitorFinished=false;speechEmotion='curious';speechCue='none';window.auditionState={phase:'connecting',audioReceived:false,mode:mode.value,voice:voice.value,style:stylePreset.value,expressive:expressiveEmotion.checked};window.creatureSimulation?.setExpressive?.(expressiveEmotion.checked);captions.textContent='';reference.pause();interruptEleven();state('connecting','Connecting—allow microphone access if prompted.');
+start.disabled=true;stop.disabled=false;voice.disabled=true;mode.disabled=true;stylePreset.disabled=true;closing=false;finalized=false;visitorText='';visitorFinished=false;speechEmotion='curious';speechCue='none';window.auditionState={phase:'connecting',audioReceived:false,mode:mode.value,voice:voice.value,style:stylePreset.value,expressive:expressiveEmotion.checked};stage('browser setup');window.creatureSimulation?.setExpressive?.(expressiveEmotion.checked);captions.textContent='';reference.pause();interruptEleven();state('connecting','Connecting—allow microphone access if prompted.');
 try{
+stage('secure microphone check');
 if(!window.isSecureContext)throw Error('Open the laboratory’s HTTPS link to enable the microphone on your phone.');
 if(!navigator.mediaDevices?.getUserMedia)throw Error('Microphone access is unavailable. Open this page directly in Safari or Chrome.');
 // Unlock Web Audio in the tap handler, before microphone/network awaits.
-audioContext=audioContext||new AudioContext();await audioContext.resume();
+stage('audio unlock');audioContext=audioContext||new AudioContext();await audioContext.resume();
 if(attempt!==connectionAttempt||closing)return;
 if(mode.value==='elevenagents'){await startElevenAgent(attempt);return;}
-peer=new RTCPeerConnection();
+stage('WebRTC setup');peer=new RTCPeerConnection();
 peer.ontrack=async e=>{window.auditionState.audioReceived=true;const remoteStream=e.streams?.[0]||new MediaStream([e.track]);if(mode.value==='builtin'){audio.srcObject=remoteStream;audio.play().catch(()=>state('connected','Connected. Press play above to hear the Creature.'));}else if(mode.value==='builtin_dsp'||mode.value==='builtin_dsp_match'||mode.value==='builtin_dsp_natural'||mode.value==='builtin_dsp_natural_clear'||mode.value==='builtin_dsp_deep'){try{await connectLiveDsp(e.track,remoteStream);}catch(error){window.auditionState.error='Local voice processing failed: '+error.message;state('error',window.auditionState.error);end();}}else{e.track.enabled=false;}};
-const acquired=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+stage('microphone permission');const acquired=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
 if(attempt!==connectionAttempt||closing){acquired.getTracks().forEach(t=>t.stop());return;}
 microphone=acquired;
 microphone.getAudioTracks().forEach(t=>peer.addTrack(t,microphone));
-channel=peer.createDataChannel('oai-events');
+stage('data channel');channel=peer.createDataChannel('oai-events');
 channel.onmessage=({data})=>{const e=JSON.parse(data);if(e.type==='session.started'){
 ready=true;clearTimeout(connectTimer);if(document.hidden){leaveEncounter();return;}state('connected',(mode.value==='elevenlabs'||mode.value==='elevenlabs_smooth')?'Live through ElevenLabs—waiting for the Creature’s invitation.':mode.value==='builtin_dsp_deep'?'Live through deep local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_natural_clear'?'Live through naturalized-clear local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_natural'?'Live through naturalized local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_match'?'Live through spectrum-matched local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp'?'Live through original local Colossus processing—speak or interrupt naturally.':'Live raw voice—speak or interrupt naturally.');
 const openingDirection=stylePreset.value==='shelleyan_clear'
@@ -278,17 +284,18 @@ if(mode.value==='elevenlabs'||mode.value==='elevenlabs_smooth'){if(speaker==='Ch
 }else if(e.type==='error'){window.auditionState.error=e.error;end();}};
 channel.onclose=()=>{if(!finalized&&!closing){signalStop();state('ended','Connection closed.');cleanup();}};
 peer.onconnectionstatechange=()=>{if(peer?.connectionState==='failed'){signalStop();state('error','Audio connection failed.');cleanup();}};
-await peer.setLocalDescription(await peer.createOffer());
-if(peer.iceGatheringState!=='complete')await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Connection setup timed out')),10000);peer.addEventListener('icegatheringstatechange',function check(){if(peer.iceGatheringState==='complete'){clearTimeout(timer);peer.removeEventListener('icegatheringstatechange',check);resolve();}});});
+stage('local WebRTC offer');await peer.setLocalDescription(await peer.createOffer());
+stage('network candidates');if(peer.iceGatheringState!=='complete')await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Connection setup timed out')),10000);peer.addEventListener('icegatheringstatechange',function check(){if(peer.iceGatheringState==='complete'){clearTimeout(timer);peer.removeEventListener('icegatheringstatechange',check);resolve();}});});
 if(attempt!==connectionAttempt||closing)return;
-const r=await fetch('/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,voice:voice.value,style:stylePreset.value,mode:mode.value,sdp:peer.localDescription.sdp})});
+stage('Live session request');const r=await fetch('/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,voice:voice.value,style:stylePreset.value,mode:mode.value,sdp:peer.localDescription.sdp})});
 const result=await r.json();if(r.status===401){location.href='/login';return;}if(!r.ok){const stale=r.status===403&&result.code==='stale_audition_token';const error=Error(stale?result.error:r.status===403?'OpenAI denied Live voice access (403): '+(result.error||'Access denied')+' Check this API project’s Live access and key permissions.':result.error||'Session creation failed');error.status=r.status;error.code=result.code;throw error;}
 if(attempt!==connectionAttempt||closing){signalStop();return;}
-await peer.setRemoteDescription({type:'answer',sdp:result.transport.sdp});
+stage('remote WebRTC answer');const answer=result?.transport?.sdp;if(typeof answer!=='string'||!/^v=0(?:\r?\n|$)/.test(answer))throw Error('The Live service returned an invalid audio answer.');
+try{await peer.setRemoteDescription({type:'answer',sdp:normalizedSdp(answer)});}catch(error){error.startupStage='remote WebRTC answer';throw error;}
 if(attempt!==connectionAttempt||closing)return;
 connectTimer=setTimeout(()=>{if(!ready){end();}},20000);
 pollTimer=setInterval(async()=>{try{const s=await(await fetch('/status')).json();if(s.emotion&&s.emotion!==window.auditionState.emotion){speechEmotion=s.emotion;window.auditionState.emotion=s.emotion;window.creatureSimulation?.setDirection?.(s.emotion);}if(s.cue&&s.cue!==window.auditionState.cue){speechCue=s.cue;window.auditionState.cue=s.cue;window.creatureSimulation?.setCue?.(s.cue);}if(s.stop_requested&&!closing)end();}catch{}},350);
-}catch(e){if(attempt!==connectionAttempt)return;const limited=e.status===429;const exhausted=limited&&e.code==='credit_balance_exhausted';const message=exhausted?'The OpenAI API project has exhausted its credit balance. Add API credits or use a funded Live-enabled project/key, then reload this page.':limited?'The instruments have grown fevered. Let the current subside, then summon me again.':e.name==='NotAllowedError'?'Microphone permission was denied. Allow microphone access in this website’s browser settings, then try again.':e.message;window.auditionState.error=message;signalStop();cleanup();state(exhausted?'billing':limited?'limit':'error',message);}
+}catch(e){if(attempt!==connectionAttempt)return;const limited=e.status===429;const exhausted=limited&&e.code==='credit_balance_exhausted';const failedStage=e.startupStage||startupStage;const raw=e?.message||String(e)||'Unknown browser error';const message=exhausted?'The OpenAI API project has exhausted its credit balance. Add API credits or use a funded Live-enabled project/key, then reload this page.':limited?'The instruments have grown fevered. Let the current subside, then summon me again.':e.name==='NotAllowedError'?'Microphone permission was denied. Allow microphone access in this website’s browser settings, then try again.':`${failedStage}: ${raw}`;window.auditionState.error=message;window.auditionState.failureStage=failedStage;console.error('Creature connection failed',{stage:failedStage,name:e?.name,message:raw});signalStop();cleanup();state(exhausted?'billing':limited?'limit':'error',message);}
 };
 stop.onclick=end;
 function refreshVoiceSummary(){
