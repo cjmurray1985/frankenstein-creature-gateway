@@ -219,7 +219,7 @@ class Gateway:
                 # Keep the disabled selector truthful so its submitted value
                 # matches the family voice policy and the local audition's
                 # Cinder default.
-                page = re.sub(r'(<option value="(?:vesper|stone|ripple|meridian|beacon)" )selected', r'\1', page)
+                page = re.sub(r'(<option value="(?:vesper|stone|ripple|meridian|beacon|cinder)") selected', r'\1', page)
                 page = re.sub(r'(<option value="cinder")(?=>)', r'\1 selected', page, count=1)
                 page = page.replace('Ready. Up to twenty minutes per encounter.', 'Ready. Up to twenty minutes per encounter. One visitor at a time.')
                 page = page.replace('</dialog>', '<form method="post" action="/logout"><input type="hidden" name="token" value="'+csrf+'"><button class="secondary">Lock the laboratory</button></form></dialog>')
