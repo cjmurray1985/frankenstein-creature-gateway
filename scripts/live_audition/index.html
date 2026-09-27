@@ -77,9 +77,9 @@ const token='__TOKEN__', ELEVEN_AGENT_ID='agent_6201m3fsx248fprvj4sf18c7th4n', s
 // The legacy path starts after four words for minimum latency. The smooth path
 // waits for sentence-shaped batches and adds a short playback prebuffer so the
 // provider has enough context and the browser can absorb network jitter.
-const SPEECH_IDLE_MS=1100, SPEECH_MIN_CHARS=40, SPEECH_MIN_WORDS=8, SPEECH_FIRST_CHARS=20, SPEECH_FIRST_WORDS=4;
+const SPEECH_IDLE_MS=1100, SPEECH_MIN_CHARS=40, SPEECH_MIN_WORDS=8, SPEECH_FIRST_CHARS=20, SPEECH_FIRST_WORDS=4, HIDDEN_GRACE_MS=5000;
 const SMOOTH_MIN_WORDS=12, SMOOTH_FIRST_MIN_WORDS=6, SMOOTH_PLAYBACK_LEAD=0.22;
-let peer, channel, microphone, ready=false, closing=false, finalized=false, limitTimer, closeTimer, connectTimer, pollTimer, speechTimer, speechText='', speechGeneration=0, speechSocket, speechQueue=[], speechStarted=false, audioContext, nextAudioTime=0, speechSources=new Set();
+let peer, channel, microphone, ready=false, closing=false, finalized=false, limitTimer, closeTimer, connectTimer, pollTimer, hiddenTimer, speechTimer, speechText='', speechGeneration=0, speechSocket, speechQueue=[], speechStarted=false, audioContext, nextAudioTime=0, speechSources=new Set();
 let elevenConversation=null, elevenMeterTimer=null, elevenSpeaking=false, elevenSdkPromise=null;
 let liveDspNodes=[],liveDspMedia=null,liveDspMeterTimer,dspModuleReady;
 let speechInputEnded=false,speechIdle=false;
@@ -249,7 +249,8 @@ async function startElevenAgent(attempt){
   },80);
   limitTimer=setTimeout(end,1200000);
 }
-function cleanup(){connectionAttempt++;finalized=true;interruptEleven();stopLiveDsp();clearTimeout(limitTimer);clearTimeout(closeTimer);clearTimeout(connectTimer);clearInterval(pollTimer);ready=false;if(channel){channel.onclose=null;channel.onmessage=null;}if(peer){peer.onconnectionstatechange=null;peer.ontrack=null;}microphone?.getTracks().forEach(t=>t.stop());channel?.close();peer?.close();audio.srcObject=null;start.disabled=false;stop.disabled=true;voice.disabled=false;mode.disabled=false;stylePreset.disabled=false;refreshVoiceSummary();window.encounterUI?.reset();}
+function scheduleHiddenEnd(){clearTimeout(hiddenTimer);hiddenTimer=null;if(!document.hidden||!ready||closing)return;hiddenTimer=setTimeout(()=>{hiddenTimer=null;if(document.hidden&&ready&&!closing)leaveEncounter();},HIDDEN_GRACE_MS);}
+function cleanup(){connectionAttempt++;finalized=true;interruptEleven();stopLiveDsp();clearTimeout(limitTimer);clearTimeout(closeTimer);clearTimeout(connectTimer);clearTimeout(hiddenTimer);clearInterval(pollTimer);hiddenTimer=null;ready=false;if(channel){channel.onclose=null;channel.onmessage=null;}if(peer){peer.onconnectionstatechange=null;peer.ontrack=null;}microphone?.getTracks().forEach(t=>t.stop());channel?.close();peer?.close();audio.srcObject=null;start.disabled=false;stop.disabled=true;voice.disabled=false;mode.disabled=false;stylePreset.disabled=false;refreshVoiceSummary();window.encounterUI?.reset();}
 async function signalStop(){await fetch('/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token}),keepalive:true}).catch(()=>{});}
 function end(){if(closing)return;closing=true;stop.disabled=true;microphone?.getTracks().forEach(t=>t.stop());interruptEleven();if(mode.value==='elevenagents'){state('ended','Ended.');cleanup();return;}state('closing','Ending audition…');signalStop();if(channel?.readyState==='open')channel.send(JSON.stringify({type:'session.close'}));closeTimer=setTimeout(()=>{state('ended','Ended. Final usage confirmation unavailable.');cleanup();},15000);}
 start.onclick=async()=>{
@@ -271,7 +272,7 @@ microphone=acquired;
 microphone.getAudioTracks().forEach(t=>peer.addTrack(t,microphone));
 stage('data channel');channel=peer.createDataChannel('oai-events');
 channel.onmessage=({data})=>{const e=JSON.parse(data);if(e.type==='session.started'){
-ready=true;clearTimeout(connectTimer);if(document.hidden){leaveEncounter();return;}state('connected',(mode.value==='elevenlabs'||mode.value==='elevenlabs_smooth')?'Live through ElevenLabs—waiting for the Creature’s invitation.':mode.value==='builtin_dsp_deep'?'Live through deep local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_natural_clear'?'Live through naturalized-clear local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_natural'?'Live through naturalized local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_match'?'Live through spectrum-matched local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp'?'Live through original local Colossus processing—speak or interrupt naturally.':'Live raw voice—speak or interrupt naturally.');
+ready=true;clearTimeout(connectTimer);state('connected',(mode.value==='elevenlabs'||mode.value==='elevenlabs_smooth')?'Live through ElevenLabs—waiting for the Creature’s invitation.':mode.value==='builtin_dsp_deep'?'Live through deep local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_natural_clear'?'Live through naturalized-clear local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_natural'?'Live through naturalized local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_match'?'Live through spectrum-matched local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp'?'Live through original local Colossus processing—speak or interrupt naturally.':'Live raw voice—speak or interrupt naturally.');scheduleHiddenEnd();
 const openingDirection=stylePreset.value==='shelleyan_clear'
   ?'Begin this encounter now in two or three quiet sentences. Notice Christopher, reveal a fragment of wary curiosity, and ask one pointed question that invites a real answer. Speak each sentence as a separate thought: let it land, leave an audible half-second of silence before the next sentence, and leave a longer silence after a grave realization. Do not announce the audition.'
   :'Begin this encounter now in two or three quiet sentences. Notice Christopher, reveal a fragment of wary curiosity, and ask one pointed question that invites a real answer. Then listen. Do not announce the audition.';
@@ -329,15 +330,16 @@ reference.onended=()=>window.creatureSimulation?.stop();
 function leaveEncounter(){
   reference.pause();
   if(!start.disabled&&!ready)return;
-  closing=true;if(mode.value!=='elevenagents')signalStop();
+  closing=true;clearTimeout(hiddenTimer);hiddenTimer=null;if(mode.value!=='elevenagents')signalStop();
   if(channel?.readyState==='open')channel.send(JSON.stringify({type:'session.close'}));
   cleanup();state('ended','Encounter ended while the page was away. Tap Speak to the Creature to reconnect.');
 }
 window.addEventListener('pagehide',leaveEncounter);
 window.addEventListener('visibilitychange',()=>{
-  // A phone call, app switch or screen lock must not leave a paid encounter
-  // running. Do not cancel a pending microphone permission sheet.
-  if(document.hidden&&ready)leaveEncounter();
+  // Mobile Safari can briefly report hidden while a permission/WebRTC surface
+  // is opening. Debounce the background safety stop so transient state changes
+  // do not end a newly connected encounter.
+  scheduleHiddenEnd();
 });
 </script>
 <script type="module" id="encounter-ui">

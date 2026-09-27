@@ -7,7 +7,7 @@ const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
 const script=html.match(/<script>\s*([\s\S]*?)<\/script>/)[1];
 
 function page(){
-  const calls=[],elements=new Map(),sources=[],events=new Map();
+  const calls=[],elements=new Map(),sources=[],events=new Map(),timers=new Map();let nextTimer=0;
   function element(id){
     if(!elements.has(id))elements.set(id,{
       value:id==='#mode'?'elevenlabs':id==='#voice'?'vesper':id==='#style-preset'?'restrained':'',disabled:false,style:{},textContent:'',innerHTML:'',
@@ -32,14 +32,14 @@ function page(){
       schedule(...args){calls.push(['schedule',...args]);},
       stop(){calls.push(['clearMotion']);},setPhase(){},
     }},performance:{now:()=>100},WebSocket:Socket,
-    ArrayBuffer,Int16Array,Float32Array,setTimeout:()=>1,clearTimeout(){},clearInterval(){},
+    ArrayBuffer,Int16Array,Float32Array,setTimeout:(fn)=>{const id=++nextTimer;timers.set(id,fn);return id;},clearTimeout:(id)=>timers.delete(id),clearInterval(){},
     navigator:{mediaDevices:{getUserMedia:async()=>{throw Error('Unexpected microphone request');}}},
     fetch:async()=>{calls.push(['stopRequest']);return {};},
     encodeURIComponent,audioContextFixture:context,
   });
   vm.runInContext(script,sandbox);
   vm.runInContext('audioContext=audioContextFixture;',sandbox);
-  return {run:s=>vm.runInContext(s,sandbox),sandbox,calls,sources,Socket,events,element};
+  return {run:s=>vm.runInContext(s,sandbox),sandbox,calls,sources,Socket,events,timers,element};
 }
 
 test('audio startup failure restores retry instead of leaving a disabled CTA',async()=>{
@@ -63,6 +63,7 @@ test('backgrounding an active encounter stops mic, audio, connection and permits
   p.sandbox.fixturePeer={close(){closed++;}};
   p.run('ready=true;start.disabled=true;microphone={getTracks:()=>[track]};peer=fixturePeer;document.hidden=true');
   p.events.get('visibilitychange')();
+  p.timers.get(p.run('hiddenTimer'))();
   assert.equal(stopped,1);assert.equal(closed,1);
   assert.equal(p.element('#start').disabled,false);
   assert.equal(p.sandbox.window.auditionState.phase,'ended');
