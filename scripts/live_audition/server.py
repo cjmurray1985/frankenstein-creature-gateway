@@ -576,10 +576,15 @@ class Handler(BaseHTTPRequestHandler):
         voice = body.get('voice')
         style_id = body.get('style')
         mode = body.get('mode')
-        if (voice not in LIVE_VOICES or style_id not in STYLE_PRESETS or
-                mode not in OUTPUT_MODES or not isinstance(body.get('sdp'), str) or
-                not body['sdp'].startswith('v=0')):
-            return self.reply(400, {'error': 'Invalid voice, style, mode, or SDP'})
+        invalid_field = (
+            'voice' if voice not in LIVE_VOICES else
+            'style' if style_id not in STYLE_PRESETS else
+            'mode' if mode not in OUTPUT_MODES else
+            'sdp' if not isinstance(body.get('sdp'), str) or not body['sdp'].startswith('v=0') else
+            None
+        )
+        if invalid_field:
+            return self.reply(400, {'error': f'Invalid {invalid_field}'})
         with lock:
             if active is None and deadline and time.monotonic() >= deadline:
                 count, deadline = 0, None
