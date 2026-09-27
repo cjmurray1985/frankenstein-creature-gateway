@@ -31,6 +31,7 @@ SESSION_SECONDS = 1200
 MAX_REPLY_STREAMS = 60
 FAMILY_STYLES = frozenset(('labored', 'restrained', 'abyssal', 'shelleyan', 'shelleyan_clear'))
 FAMILY_MODES = frozenset(('builtin', 'builtin_dsp', 'builtin_dsp_match', 'builtin_dsp_natural', 'builtin_dsp_natural_clear', 'builtin_dsp_deep', 'elevenagents', 'elevenlabs', 'elevenlabs_smooth'))
+FAMILY_VOICE = 'cinder'
 
 
 def password_hash(password):
@@ -215,12 +216,11 @@ class Gateway:
                 page = await self.backend_token()
                 page = page.replace("const token='"+self.token+"'", "const token='"+csrf+"'")
                 page = page.replace('ws://localhost:8768/speech?token=', "${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/speech?token=")
-                # The public family gateway deliberately pins the base voice to
-                # Vesper. Keep the disabled selector truthful so its submitted
-                # value cannot trip the gateway's allowlist with the local
-                # audition's Cinder default.
-                page = re.sub(r'(<option value="(?:ripple|stone|meridian|beacon|cinder)" )selected', r'\1', page)
-                page = re.sub(r'(<option value="vesper")(?=>)', r'\1 selected', page, count=1)
+                # Keep the disabled selector truthful so its submitted value
+                # matches the family voice policy and the local audition's
+                # Cinder default.
+                page = re.sub(r'(<option value="(?:vesper|stone|ripple|meridian|beacon)" )selected', r'\1', page)
+                page = re.sub(r'(<option value="cinder")(?=>)', r'\1 selected', page, count=1)
                 page = page.replace('Ready. Up to twenty minutes per encounter.', 'Ready. Up to twenty minutes per encounter. One visitor at a time.')
                 page = page.replace('</dialog>', '<form method="post" action="/logout"><input type="hidden" name="token" value="'+csrf+'"><button class="secondary">Lock the laboratory</button></form></dialog>')
                 return web.Response(text=page, content_type='text/html')
@@ -265,7 +265,7 @@ class Gateway:
                 return web.json_response({'error':'The Creature is speaking with another visitor. Try again shortly.'}, status=409)
             style = body.get('style', 'labored')
             mode = body.get('mode', 'builtin_dsp_natural_clear')
-            if (body.get('voice') != 'vesper' or style not in FAMILY_STYLES or
+            if (body.get('voice') != FAMILY_VOICE or style not in FAMILY_STYLES or
                     mode not in FAMILY_MODES or not isinstance(body.get('sdp'), str) or
                     not body['sdp'].startswith('v=0')):
                 return web.json_response({'error':'Invalid family session configuration.'}, status=400)
@@ -274,7 +274,7 @@ class Gateway:
             if not self.store.reserve([('sessions:v3:hour',12,3600), ('sessions:v3:day',60,86400)]):
                 return web.json_response({'error':'The family encounter limit has been reached. Please return later.', 'code':'family_session_limit'}, status=429)
             await self.backend_token()
-            code, data, _ = await self.upstream_request('POST', '/session', {'token':self.token,'voice':'vesper','style':style,'mode':mode,'sdp':body['sdp']})
+            code, data, _ = await self.upstream_request('POST', '/session', {'token':self.token,'voice':FAMILY_VOICE,'style':style,'mode':mode,'sdp':body['sdp']})
             if code != 201:
                 provider_code = None
                 provider_reason = None
