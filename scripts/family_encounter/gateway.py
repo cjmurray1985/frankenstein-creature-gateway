@@ -29,6 +29,8 @@ SECURITY = {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
             'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"}
 SESSION_SECONDS = 1200
 MAX_REPLY_STREAMS = 60
+FAMILY_STYLES = frozenset(('labored', 'restrained', 'abyssal', 'shelleyan', 'shelleyan_clear'))
+FAMILY_MODES = frozenset(('builtin', 'builtin_dsp', 'builtin_dsp_match', 'builtin_dsp_natural', 'builtin_dsp_natural_clear', 'builtin_dsp_deep', 'elevenagents', 'elevenlabs', 'elevenlabs_smooth'))
 
 
 def password_hash(password):
@@ -252,14 +254,18 @@ class Gateway:
                 return web.Response(status=404)
             if self.owner and time.monotonic() < self.until:
                 return web.json_response({'error':'The Creature is speaking with another visitor. Try again shortly.'}, status=409)
-            if body.get('voice') != 'vesper' or not isinstance(body.get('sdp'), str) or not body['sdp'].startswith('v=0'):
-                return web.Response(status=400)
+            style = body.get('style', 'labored')
+            mode = body.get('mode', 'builtin_dsp_natural_clear')
+            if (body.get('voice') != 'vesper' or style not in FAMILY_STYLES or
+                    mode not in FAMILY_MODES or not isinstance(body.get('sdp'), str) or
+                    not body['sdp'].startswith('v=0')):
+                return web.json_response({'error':'Invalid family session configuration.'}, status=400)
             # Versioned keys prevent an obsolete, tighter quota from continuing
             # to block the family after a limit-policy deployment.
             if not self.store.reserve([('sessions:v2:hour',12,3600), ('sessions:v2:day',60,86400)]):
                 return web.json_response({'error':'The family encounter limit has been reached. Please return later.'}, status=429)
             await self.backend_token()
-            code, data, _ = await self.upstream_request('POST', '/session', {'token':self.token,'voice':'vesper','sdp':body['sdp']})
+            code, data, _ = await self.upstream_request('POST', '/session', {'token':self.token,'voice':'vesper','style':style,'mode':mode,'sdp':body['sdp']})
             if code != 201:
                 provider_code = None
                 provider_reason = None
