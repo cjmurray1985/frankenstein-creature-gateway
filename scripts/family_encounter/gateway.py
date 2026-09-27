@@ -277,6 +277,14 @@ class Gateway:
                             provider_reason = 'invalid_sdp_offer'
                         elif 'voice' in provider_message:
                             provider_reason = 'voice_configuration'
+                    elif isinstance(provider_error, str):
+                        raw_provider_message = re.sub(r'[\r\n\t]+', ' ', provider_error).strip()
+                        provider_detail = raw_provider_message[:240] or None
+                        provider_message = raw_provider_message.lower()
+                        if 'sdp' in provider_message or 'offer' in provider_message:
+                            provider_reason = 'invalid_sdp_offer'
+                        elif 'voice' in provider_message or 'style' in provider_message or 'mode' in provider_message:
+                            provider_reason = 'local_request_validation'
                 except (TypeError, ValueError):
                     pass
                 if code in (401, 403):
