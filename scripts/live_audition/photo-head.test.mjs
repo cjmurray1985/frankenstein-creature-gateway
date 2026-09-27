@@ -30,11 +30,11 @@ test('neck has both supported motions, bounded velocity, and no per-syllable bob
   const samples=[];
   for(let i=0;i<400;i++){
     const pose=p.step({open:i%2,speaking:true},'withdrawn',.05);
-    assert.ok(Math.abs(pose.NECK_SIDE-previous.NECK_SIDE)<=.011001);
-    assert.ok(Math.abs(pose.NECK_FB-previous.NECK_FB)<=.010001);
-    assert.ok(Math.abs(pose.NECK_SIDE)<=1&&Math.abs(pose.NECK_FB)<=1);
+    assert.ok(Math.abs(pose.CH2-previous.CH2)<=.011001);
+    assert.ok(Math.abs(pose.CH1-previous.CH1)<=.010001);
+    assert.ok(Math.abs(pose.CH1)<=1&&Math.abs(pose.CH2)<=1&&Math.abs(pose.CH3)<=1);
     previous=pose;samples.push(pose);
   }
-  assert.equal(samples.at(-1).NECK_SIDE,-.35);assert.equal(samples.at(-1).NECK_FB,.32);
-  assert.ok(samples.slice(100).every(v=>v.NECK_FB===.32));
+  assert.equal(samples.at(-1).CH2,-.35);assert.equal(samples.at(-1).CH1,.32);
+  assert.ok(samples.slice(100).every(v=>v.CH1===.32));
 });

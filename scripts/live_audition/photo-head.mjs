@@ -190,6 +190,6 @@ export async function buildPhotoHead(){
       previousLids=closure;
     }
   }
-  update({M1:0,CH4:0,CH5:0,CH6:0,CH7:0,CH8:.18});
+  update({M1:0,CH1:0,CH2:0,CH3:0,CH4:0,CH5:0,CH6:0,CH7:0,CH8:.18});
   return {group,update,geometry,landmarks:LANDMARKS,pixels,mouthIndices};
 }

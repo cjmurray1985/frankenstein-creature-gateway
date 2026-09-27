@@ -30,21 +30,24 @@ No new AI texture or source-photo retouching was used.
   moves only the sampled iris/pupil appearance, excluding photographed eyelid
   edges; eye shell geometry, whites and lid outlines stay fixed. CH4/CH5 drive
   vertical gaze and CH6/CH7 horizontal gaze. Travel remains approximate.
-- NECK_SIDE drives coupled yaw/lean (0.25 / -0.17 rad at full normalized travel).
-  NECK_FB drives pitch (0.16 rad). The complete assembly shares the neck pivot.
-  Native Blender custom properties provide degree-based yaw and pitch controls.
+- CH1/PWM5 drives neck flexion/extension and maps to pitch (0.16 rad at full
+  normalized travel). CH2/PWM6 drives neck rotation/yaw (0.25 rad). CH3/PWM7
+  drives neck lateral flexion/roll (-0.17 rad). The complete assembly shares
+  the neck pivot; native Blender custom properties provide degree-based controls.
 - CH8 now drives linked curved upper/lower eyelid surfaces in the browser.
   Upper lids supply most of the travel; lower lids rise slightly to meet them.
   The material color is sampled from nearby scanned skin. Automatic blinks,
   emotional narrowing and full closure are active. This is a visual approximation
-  of the linked mechanism, not calibrated servo travel. CH1–CH3 remain unresolved.
+  of the linked mechanism, not calibrated servo travel. CH1–CH3 now map to the
+  confirmed neck flexion, rotation and lateral-flexion mechanisms; their visual
+  travel remains uncalibrated.
 
 The browser levels the bilateral eye-center vector to remove residual capture
 yaw/roll and applies an additional -8-degree pitch correction. This is a rigid
 presentation adjustment, not a change to scanned anatomy or the preserved Blender
-authoring file. Curious rest now targets exactly zero gaze and neck offsets.
-The movement study lasts 20 seconds and checks horizontal/vertical gaze, followed
-by a slow eyelid close, a one-second closed hold, and reopening.
+authoring file. Curious rest now targets exactly zero gaze and CH1–CH3 neck offsets.
+The movement study lasts 20 seconds and checks mouth, neck rotation/flexion/lateral
+flexion, horizontal/vertical gaze, then linked-eyelid closure and reopening.
 The eye material, rest correction and new eyelid surfaces are browser-specific;
 they are not baked into the GLB or Blender asset.
 
@@ -142,3 +145,49 @@ Eye texture correction (2026-09-21): both iris/pupil fields now sample the clean
 Mobile audio/menu correction (2026-09-23): the ambient thunder loop now starts and remains at 0.001 volume on coarse/mobile pointers (0.012 on desktop), keeping it effectively muted beneath the voice without a gesture-triggered fade-in. During connecting, connected, and rendering phases it is hard-muted so the live Creature voice cannot be masked by the storm bed. All encounter errors now remain on the stage warning and close any open dialog; the menu is user-controlled and never opens just to report an error. This prevents mobile conversation failures from interrupting the visitor with a menu popup.
 
 Ambient thunder removal (2026-09-23): Christopher requested that the storm bed be removed entirely after device playback remained too loud during conversation. The WAV asset, HTML audio element, autoplay/retry listeners, entrance hook, and static serving entries were deleted; the Creature voice remains on its independent ElevenLabs/OpenAI audio path.
+
+### Emotion-directed virtual body language (2026-09-27)
+The browser motion core now treats the eight conversation emotions as coordinated body-language profiles rather than a single gaze offset. Each profile supplies resting gaze, linked-lid closure, neck flexion/rotation/lateral targets, jaw emphasis, and a normalized shared `LED_BOLTS` signal. Curiosity acquires with the eyes before the neck follows; hope opens and gently advances; engagement holds direct contact; wariness narrows and turns aside; hurt lowers and averts; anger advances with a firmer stare and brighter visual LED proxies; withdrawal looks away and becomes unusually still. Live speech can add one restrained phrase-level neck emphasis on an audio-envelope rising edge, with a refractory interval so syllables do not drive a mechanical chatter. The two laboratory point lights are visual stand-ins for the shared bolt signal only and are not calibrated PWM outputs. Native GPT-Live sessions now expose the server's current relational emotion through the local status poll at 350 ms, while ElevenLabs streams retain their pre-audio direction message. Added a deterministic `Run emotional arc` browser preview for dormant → curious → hopeful → engaged → wary → hurt → angry → withdrawn → curious. No physical signal, actuator, Pi, GPIO, wiring or power operation occurred; all normalized values remain virtual and bounded.
+
+### Semantic conversational cues (2026-09-27)
+The sustained emotion profiles now have a separate short-lived cue layer for readable social gestures. `think` lifts gaze and slightly turns the head as if searching for a thought; `agree` gives a small nod; `disagree` gives a bounded side-to-side motion; `listening` leans in; `surprise` briefly opens the lids and raises the gaze; `repair` acknowledges a correction; and `withdraw` turns away. Cues use only the confirmed eye, eyelid, CH1/PWM5, CH2/PWM6, CH3/PWM7 and shared `LED_BOLTS` virtual channels, are envelope-shaped and auto-expire. Conservative server phrase matching selects a cue from the Creature's response, while visitor transcript input creates a listening cue and the first response token creates a thinking cue. The browser status includes the active cue for inspection. No hardware values are calibrated or emitted.
+
+### GPT-Live credit exhaustion diagnosis (2026-09-27)
+The localhost page remained healthy but conversation start returned the provider's `429 credit_balance_exhausted` response from the OpenAI API project. The server event log recorded three creation failures; this is distinct from stale audition tokens, microphone permission, invalid voice/style/SDP and local WebRTC setup. The browser now preserves the provider error code and displays an actionable billing message. Add credits or point the server at a funded Live-enabled API project/key before attempting another conversation. No hardware or actuator path is involved.
+
+### GPT-Live access verification after credit reload (2026-09-27)
+After Christopher replenished the OpenAI API project, the local bridge was restarted and localhost refreshed. Cinder with labored breath and naturalized-clear DSP created a GPT-Live session successfully, reached `Listening`, produced Creature output, and ended cleanly after 15 seconds. The server status recorded `created` followed by `session.closed`; the page is ready for the next user-started encounter. No hardware or actuator path was involved.
+
+### Supported in-session emotion context (2026-09-27)
+The first replacement attempt used `session.update`, but the current GPT-Live model rejected `session.instructions` as an unknown parameter. The subsequent `conversation.item.create` experiment was rejected by the GPT-Live event allowlist. Emotion changes now use the supported quiet `session.thinking.append` event with `delegation_id: null` and the current relational guidance; the original `live_instructions(style)` remains untouched in the session. The status/cue layer continues to drive the virtual eyes, lids, neck and shared LED proxy. Provider errors retain bounded code, message, parameter and type fields. A deterministic watch test confirms that a friendly transcript emits a HOPEFUL thinking append. No hardware or actuator path was involved.
+
+### Quiet emotion-context path (2026-09-27)
+After the GPT-Live `session.update` and `conversation.item.create` rejections, the bridge now uses `session.thinking.append` for quiet emotion context. This avoids spoken interruption while preserving the session's original Creature prompt. The virtual emotion/cue path remains independent and inspectable.
+
+### Emotion cue observability and mapping correction (2026-09-27)
+The latest live session did trigger `engaged`, but its body-language profile is deliberately restrained; short cues such as `think` and `listening` can expire before the menu is opened. The deterministic emotion arc visibly reports its active state and non-neutral normalized mechanism values. Corrected a stale PCA label regression back to the confirmed virtual map: CH1/PWM5, CH2/PWM6, CH3/PWM7, CH4/PWM0, CH5/PWM1, CH6/PWM2, CH7/PWM3 and CH8/PWM4. No hardware or actuator path was involved.
+# Expressive emotion presentation toggle (2026-09-27)
+
+The browser audition now exposes a checked-by-default `More expressive emotion` toggle. It is a presentation-layer comparison: enabled mode amplifies the semantic eye, linked-lid, neck and shared LED-bolt proxy changes, plus brief think/agree/disagree/listening/surprise/repair/withdraw cues, while leaving voice synthesis, local DSP, mouth audio envelope and latency untouched. Off returns to the restrained profiles. The normalized virtual channels remain clamped and the scene diagnostics report `expressive`; the control persists across a stop/reset and is applied to reference playback and all live output paths. This remains a virtual simulation only; no PWM, hardware, GPIO, Pi, wiring or power operation occurred.
+# Live emotion observability correction (2026-09-27)
+
+The first expressive-toggle pass still allowed a real encounter to look neutral. The cause was twofold: the engaged profile was too close to curious, and a queued ElevenLabs segment could overwrite a newer server-poll direction with its stale start-state emotion. Engaged now has clearly narrower linked lids, a slight lean/turn toward Christopher and a slow side-to-side attention scan; wary and hopeful are more distinct as well. The browser no longer lets segment metadata override the live status bridge. Kindness vocabulary was broadened conservatively, and completion of a first ordinary exchange now earns visible direct engagement, so a neutral conversation does not remain in the opening curious pose. The PCA map and virtual-only normalized bounds are unchanged.
+
+# Readable emotional body language pass (2026-09-27)
+
+The virtual presentation now includes five additional readable states: attentive,
+suspicious, startled, vulnerable and relieved. Attentive holds a direct, quiet
+gaze; suspicious leads with a side-eye and small bilateral eye offset; startled
+opens the gaze, recoils and briefly accents the shared LED proxy; vulnerable
+looks upward with a slight tilt; and relieved releases tension toward center.
+Normal attention remains bilaterally paired. New high-confidence transcript
+phrases, dialogue guidance and semantic cues (`startle`, `suspicion`, `plead`,
+`relief`) feed these states without claiming acoustic emotion recognition.
+
+Semantic cue envelopes now last approximately 1.0–1.45 seconds, long enough to
+register at five feet while still expiring automatically. The deterministic arc
+exercises all new states. Browser-only neck presentation multipliers are now
+0.28 rad flexion, 0.42 rad rotation and 0.30 rad lateral flexion at normalized
+full scale; these are visibility multipliers, not servo/PWM calibration. All
+channels remain normalized and clamped, M1 remains audio-driven, and no physical
+signal or actuator command is emitted.

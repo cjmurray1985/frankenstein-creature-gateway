@@ -238,12 +238,20 @@ export async function buildBlenderHead(){
   return {group,state,setReveal(value){entranceReveal.value=clamp(value);},update(p,cameraPosition,calibrateContact=false){
     const amount=clamp(p.M1||0);for(const mesh of mouthMeshes)mesh.morphTargetInfluences[mesh.morphTargetDictionary.Mouth_Open]=amount;
     for(const lining of mouthLinings)lining.set(amount);
-    rotation.setFromEuler(new THREE.Euler((p.NECK_FB||0)*.16,(p.NECK_SIDE||0)*.25,-(p.NECK_SIDE||0)*.17,'YXZ'));
+    // Confirmed neck table: CH1/PWM5 flexion-extension, CH2/PWM6 rotation,
+    // CH3/PWM7 lateral flexion. The browser preview uses normalized values.
+    // Presentation-only readability scale for the five-foot virtual viewing
+    // distance. These multipliers are not servo calibration or PWM limits;
+    // the normalized pose remains bounded before it reaches this renderer.
+    rotation.setFromEuler(new THREE.Euler((p.CH1||0)*.28,(p.CH2||0)*.42,-(p.CH3||0)*.30,'YXZ'));
     neck.quaternion.copy(neckRest).multiply(rotation);
     group.updateWorldMatrix(true,true);
+    // Confirmed head table: CH4/PWM0 and CH5/PWM1 are the two vertical eye
+    // axes; CH6/PWM2 and CH7/PWM3 are the two horizontal eye axes. CH8/PWM4
+    // is the linked eyelid axis.
     eyes.R.set(p.CH7||0,p.CH4||0,cameraPosition,calibrateContact);eyes.L.set(p.CH6||0,p.CH5||0,cameraPosition,calibrateContact);
     const closure=clamp(p.CH8||0);for(const lid of Object.values(lids))lid.set(closure);state.eyelidClosure=closure;state.eyelidPeakClosure=Math.max(state.eyelidPeakClosure,closure);
-    state.mouth=amount;state.neck=[p.NECK_SIDE||0,p.NECK_FB||0];
+    state.mouth=amount;state.neck={flexion:p.CH1||0,rotation:p.CH2||0,lateralFlexion:p.CH3||0};
     state.gaze={R:eyes.R.gaze.value.toArray(),L:eyes.L.gaze.value.toArray()};
     state.gazeNeutral={R:eyes.R.neutralContact.toArray(),L:eyes.L.neutralContact.toArray(),calibrated:eyes.R.calibrated&&eyes.L.calibrated};
     state.eyeShellsFixed=Object.values(eyes).every(e=>e.mesh.matrix.equals(e.restMatrix));

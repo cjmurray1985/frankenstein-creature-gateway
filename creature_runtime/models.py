@@ -9,11 +9,16 @@ from typing import Any, Iterable
 class Emotion(str, Enum):
     DORMANT = "dormant"
     CURIOUS = "curious"
+    ATTENTIVE = "attentive"
     HOPEFUL = "hopeful"
     ENGAGED = "engaged"
     WARY = "wary"
+    SUSPICIOUS = "suspicious"
+    STARTLED = "startled"
     HURT = "hurt"
+    VULNERABLE = "vulnerable"
     ANGRY = "angry"
+    RELIEVED = "relieved"
     WITHDRAWN = "withdrawn"
 
 

@@ -4,8 +4,17 @@ from dataclasses import dataclass, field
 
 from .models import Emotion
 
-KIND_WORDS = frozenset({"friend", "kind", "listen", "sorry", "welcome", "understand", "stay", "hello"})
+KIND_WORDS = frozenset({
+    "friend", "kind", "listen", "sorry", "welcome", "understand", "stay", "hello",
+    "excited", "glad", "happy", "curious", "trust", "connection", "thank", "thanks",
+    "appreciate", "care", "good", "please", "yes",
+})
 HOSTILE_WORDS = frozenset({"monster", "ugly", "hate", "kill", "stupid", "leave", "mock", "freak"})
+
+
+def _contains_phrase(text: str, phrases: tuple[str, ...]) -> bool:
+    value = " ".join(text.lower().split())
+    return any(phrase in value for phrase in phrases)
 
 
 @dataclass
@@ -36,7 +45,18 @@ class ConversationState:
         self.hurt = max(0, min(4, self.hurt + hostility - kindness))
 
         first_encounter = not self.turns
-        if self.hurt >= 3:
+        # These are deliberately high-confidence relational readings. They
+        # create readable sustained states without pretending that transcript
+        # keywords are full acoustic emotion recognition.
+        if _contains_phrase(visitor_text, ("do not leave me", "don't leave me", "please stay", "i am afraid", "i'm afraid", "i feel alone")):
+            self.emotion = Emotion.VULNERABLE
+        elif _contains_phrase(visitor_text, ("what was that", "whoa", "that startled", "you startled", "i was surprised")):
+            self.emotion = Emotion.STARTLED
+        elif _contains_phrase(visitor_text, ("why should i trust", "are you lying", "prove it", "what do you really want")):
+            self.emotion = Emotion.SUSPICIOUS
+        elif self.emotion in {Emotion.WARY, Emotion.SUSPICIOUS, Emotion.HURT, Emotion.VULNERABLE} and kindness and not hostility:
+            self.emotion = Emotion.RELIEVED
+        elif self.hurt >= 3:
             self.emotion = Emotion.WITHDRAWN if self.trust <= -2 else Emotion.ANGRY
         elif hostility:
             self.emotion = Emotion.HURT if self.trust >= 0 else Emotion.WARY

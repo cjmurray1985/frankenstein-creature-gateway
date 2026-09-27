@@ -42,6 +42,14 @@ test('active speech error stays on stage without reopening the menu',()=>{
   assert.equal(f.node('#encounter-menu').open,false);assert.equal(f.node('#start').hidden,true);
   assert.equal(f.node('#stage-warning').hidden,false);
 });
+test('family limit stays on stage without opening the menu',()=>{
+  const f=fixture();f.node('#encounter-menu').showModal();f.node('#encounter-menu').close();
+  f.ui.setPhase('limit',false,'The instruments have grown fevered.');
+  assert.equal(f.node('#encounter-menu').open,false);
+  assert.equal(f.node('#start').hidden,false);
+  assert.equal(f.node('#stage-warning').hidden,false);
+  assert.equal(f.node('#stage-warning').textContent,'The instruments have grown fevered.');
+});
 test('menu close restores focus and expanded state without changing encounter state',()=>{
   const f=fixture();f.ui.setPhase('connected',true);
   f.node('#open-menu').click();assert.equal(f.node('#encounter-menu').open,true);

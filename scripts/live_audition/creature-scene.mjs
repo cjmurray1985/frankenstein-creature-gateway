@@ -1,24 +1,31 @@
 import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
-import {AudioMotion,MechanicalPose,RIG,DIRECTIONS,ENCOUNTER_STAGE,entrancePose,clamp} from './motion-core.mjs';
+import {AudioMotion,MechanicalPose,RIG,HEAD_CHANNELS,DIRECTIONS,CUES,ENCOUNTER_STAGE,entrancePose,clamp} from './motion-core.mjs';
 import {buildBlenderHead} from './blender-head.mjs';
 
 const host=document.querySelector('#creature-stage'),label=document.querySelector('#scene-state'),awakeningCue=document.querySelector('#awakening-cue');
 const timeline=new AudioMotion(),pose=new MechanicalPose();
-let context=null,direction='curious',phase='ready',last=performance.now(),nextBlink=7,blinkStart=-10;
+let context=null,direction='curious',phase='ready',last=performance.now(),nextBlink=7,blinkStart=-10,liveAudioLevel=0,liveAudioSpeaking=false;
 let referenceAudio=null,referenceSamples=null,referenceEnvelope=null;
 let cancelStudy=()=>{};
 let finishEntrance=()=>{};
-const diagnostics={ready:false,frames:0,pose:{},speaking:false,renderer:'Three.js r180 / KIRI scan GLB'};
+const diagnostics={ready:false,frames:0,pose:{},speaking:false,expressive:false,renderer:'Three.js r180 / KIRI scan GLB'};
 window.creatureDiagnostics=diagnostics;
 window.creatureSimulation={
   attachAudio(c){cancelStudy();context=c;},
   schedule(samples,rate,start,emotion){timeline.enqueue(samples,rate,start,emotion||direction);},
-  setDirection(value){if(value)direction=value;},
+  setLiveAudioLevel(level,speaking){liveAudioLevel=clamp(Number(level)||0,0,1);liveAudioSpeaking=Boolean(speaking);},
+  setExpressive(value){pose.setExpressive(value);diagnostics.expressive=pose.expressive;},
+  setDirection(value){if(value&&DIRECTIONS[value])direction=value;},
+  setCue(value){if(value&&CUES[value])pose.setCue(value);},
   setPhase(value){phase=value;if(value==='connecting')finishEntrance();},
-  stop(){cancelStudy();timeline.clear();pose.jaw=0;referenceAudio=null;},
+  stop(){cancelStudy();timeline.clear();pose.reset();direction='curious';referenceAudio=null;context=null;liveAudioLevel=0;liveAudioSpeaking=false;},
   bindReference(audio,samples,rate){cancelStudy();referenceAudio=audio;referenceSamples=samples;referenceEnvelope=new AudioMotion();referenceEnvelope.enqueue(samples,rate,0,'curious');},
 };
+// The menu is parsed before this deferred module runs, so the checked-by-
+// default control can configure the first rendered frame as well as live turns.
+const expressiveControl=document.querySelector('#expressive-emotion');
+if(expressiveControl)pose.setExpressive(expressiveControl.checked);
 function dismissAwakeningCue(failed=false){
   if(!awakeningCue||awakeningCue.classList.contains('is-rendered'))return;
   if(failed){awakeningCue.classList.add('is-failed');awakeningCue.querySelector('.awakening-copy').textContent='The apparatus remains hidden. The voice may still answer.';}
@@ -102,9 +109,10 @@ async function init(){
   // Smooth, irregular lamp fluctuations and occasional separate dropouts.
   // Another lamp always holds the face; reduced-motion uses steady illumination.
   function lampNoise(t){const i=Math.floor(t),f=THREE.MathUtils.smoothstep(t-i,0,1),hash=n=>{const v=Math.sin(n*127.1+31.7)*43758.5453;return v-Math.floor(v);};return THREE.MathUtils.lerp(hash(i),hash(i+1),f);}
-  function updateLaboratoryLights(t){
+  function updateLaboratoryLights(t,boltSignal=0){
     if(lightingSelect.value!=='laboratory')return;
     const gain=Number(lightingLevel.value)/100,p=lightingPresets.laboratory;
+    const bolt=clamp(Number(boltSignal)||0);
     const animate=flickerControl.checked&&!reduced.matches;
     const flickerMix=animate?THREE.MathUtils.smoothstep((performance.now()-entranceStarted)/1000,8.5,9.7):0;
     const drop=animate?1-THREE.MathUtils.smoothstep(lampNoise(t*.28),.68,.84):1;
@@ -115,9 +123,12 @@ async function init(){
     const now=performance.now();
     if(!reduced.matches&&!document.hidden&&t>=sparkNext){sparkStarted=now;sparkDuration=90+Math.random()*150;sparkNext=t+2.8+Math.random()*5.4;sparkCount++;}
     const sparkAge=now-sparkStarted,sparkEnvelope=sparkAge>=0&&sparkAge<sparkDuration?Math.sin(Math.PI*sparkAge/sparkDuration):0;
-    neonGreen.intensity=lightingSelect.value==='laboratory'?(0.025+0.22*sparkEnvelope)*gain:0;
-    neonBlue.intensity=lightingSelect.value==='laboratory'?(0.018+0.16*Math.max(0,sparkEnvelope-.18))*gain:0;
-    diagnostics.lampLevels=[key.intensity,fill.intensity,rim.intensity,neonGreen.intensity,neonBlue.intensity];diagnostics.sparks={count:sparkCount,intensity:sparkEnvelope};
+    // These two lights are visual stand-ins for the shared left/right neck-bolt
+    // LED signal. They are deliberately not presented as calibrated hardware
+    // outputs; the real panel still reports the normalized LED_BOLTS value.
+    neonGreen.intensity=lightingSelect.value==='laboratory'?(0.025+0.22*sparkEnvelope+bolt*(.18+.22*sparkEnvelope))*gain:0;
+    neonBlue.intensity=lightingSelect.value==='laboratory'?(0.018+0.16*Math.max(0,sparkEnvelope-.18)+bolt*.12)*gain:0;
+    diagnostics.lampLevels=[key.intensity,fill.intensity,rim.intensity,neonGreen.intensity,neonBlue.intensity];diagnostics.sparks={count:sparkCount,intensity:sparkEnvelope};diagnostics.emotionBolts=bolt;
   }
   const controls=new OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.enableDamping=true;
   controls.target.copy(lookTarget);controls.minDistance=6.5;controls.maxDistance=14;controls.update();
@@ -156,24 +167,26 @@ async function init(){
   const meters=document.querySelector('#mechanism-meters');
   for(const [id,info] of Object.entries(RIG)){
     const row=document.createElement('div');row.className='mechanism-row';row.dataset.channel=id;row.title=info.evidence;
-    const code=document.createElement('span');code.className='channel';code.textContent=id.startsWith('NECK')?'Neck':id;
-    const text=document.createElement('span');text.textContent=info.label;
+    const code=document.createElement('span');code.className='channel';code.textContent=id.startsWith('CH')?`${id}/${HEAD_CHANNELS[id].pca}`:id;
+    const text=document.createElement('span');text.className='mechanism-label';text.textContent=info.label;
     const meter=document.createElement('meter');meter.min=0;meter.max=1;
     row.append(code,text,meter,document.createElement('output'));meters.append(row);
   }
-  const neutral={CH4:0,CH5:0,CH6:0,CH7:0,CH8:DIRECTIONS.curious.lids,M1:0,NECK_SIDE:0,NECK_FB:0};
-  let forced=null,studyStarted=null;
+  const neutral={CH1:0,CH2:0,CH3:0,CH4:0,CH5:0,CH6:0,CH7:0,CH8:DIRECTIONS.curious.lids,M1:0,LED_BOLTS:0};
+  let forced=null,studyStarted=null,emotionStudyStarted=null;
   // Deterministic poses for repeatable visual QA; no network or physical transport.
   window.creatureReview={
     setPose(p){forced=p?{...neutral,...p}:null;},
-    reset(){forced=null;studyStarted=null;resetView();},
+    reset(){cancelStudy();pose.reset();direction='curious';resetView();},
     camera(yaw=0,pitch=0){camera.position.set(8*Math.sin(yaw),8*Math.sin(pitch),8*Math.cos(yaw)*Math.cos(pitch));camera.lookAt(0,0,0);controls.update();},
 
   };
   const study=document.querySelector('#motion-study');
-  cancelStudy=()=>{studyStarted=null;forced=null;study.textContent='Run movement study';};
+  const emotionStudy=document.querySelector('#emotion-study');
+  cancelStudy=()=>{studyStarted=null;emotionStudyStarted=null;forced=null;study.textContent='Run movement study';emotionStudy.textContent='Run emotional arc';};
   study.onclick=async()=>{
     if(studyStarted!==null){cancelStudy();return;}
+    if(emotionStudyStarted!==null){cancelStudy();}
     if(referenceAudio&&!referenceAudio.paused){
       const audio=referenceAudio;
       // Let the audio pause handler clear its motion before starting the study.
@@ -181,15 +194,30 @@ async function init(){
     }
     finishEntrance();forced=null;resetView();studyStarted=performance.now();study.textContent='Stop movement study';document.querySelector('#encounter-menu').close();
   };
+  emotionStudy.onclick=()=>{
+    if(emotionStudyStarted!==null){cancelStudy();return;}
+    if(studyStarted!==null)cancelStudy();
+    finishEntrance();forced=null;resetView();emotionStudyStarted=performance.now();emotionStudy.textContent='Stop emotional arc';document.querySelector('#encounter-menu').close();
+  };
   function studyPose(t){
     const p={...neutral};
     if(t<3)p.M1=(1-Math.cos(t/3*Math.PI*2))/2;
-    else if(t<7)p.NECK_SIDE=Math.sin((t-3)/4*Math.PI*2)*.85;
-    else if(t<11)p.NECK_FB=Math.sin((t-7)/4*Math.PI*2)*.85;
-    else if(t<14){p.CH6=p.CH7=Math.sin((t-11)/3*Math.PI*2)*.7;}
-    else if(t<17){p.CH4=p.CH5=Math.sin((t-14)/3*Math.PI*2)*.7;}
-    else if(t<20){p.CH8=t<18?THREE.MathUtils.lerp(neutral.CH8,1,t-17):t<19?1:THREE.MathUtils.lerp(1,neutral.CH8,t-19);}
+    else if(t<6)p.CH2=Math.sin((t-3)/3*Math.PI*2)*.85;
+    else if(t<9)p.CH1=Math.sin((t-6)/3*Math.PI*2)*.85;
+    else if(t<12)p.CH3=Math.sin((t-9)/3*Math.PI*2)*.70;
+    else if(t<15){p.CH6=p.CH7=Math.sin((t-12)/3*Math.PI*2)*.7;}
+    else if(t<18){p.CH4=p.CH5=Math.sin((t-15)/3*Math.PI*2)*.7;}
+    else if(t<20){p.CH8=t<19?THREE.MathUtils.lerp(neutral.CH8,1,t-18):THREE.MathUtils.lerp(1,neutral.CH8,t-19);}
     return p;
+  }
+  const emotionalArc=[['dormant',2.4],['curious',2.6],['attentive',2.5],['hopeful',2.8],['engaged',2.8],['suspicious',2.8],['startled',1.9],['vulnerable',2.8],['relieved',2.6],['wary',2.6],['hurt',2.6],['angry',2.6],['withdrawn',2.8],['curious',2.4]];
+  function emotionStudyPose(t){
+    let elapsed=0;
+    for(const [emotion,duration] of emotionalArc){
+      if(t<elapsed+duration)return {emotion,pose:pose.step({open:0,rms:0,speaking:false},emotion,Math.min(.05,duration))};
+      elapsed+=duration;
+    }
+    return {emotion:'curious',pose:pose.step({open:0,rms:0,speaking:false},'curious',.05)};
   }
   function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;const half=Math.max(1.66,1.10*h/w);restingFov=2*Math.atan(half/visitorPosition.distanceTo(lookTarget))*180/Math.PI;camera.fov=restingFov;camera.updateProjectionMatrix();}
   new ResizeObserver(resize).observe(host);resize();
@@ -204,34 +232,43 @@ async function init(){
       const stamp=context.getOutputTimestamp?.();let t=context.currentTime-(context.outputLatency||0);
       if(stamp?.performanceTime>0)t=stamp.contextTime+(now-stamp.performanceTime)/1000;
       current=timeline.at(t);
+    }else if(liveAudioSpeaking||liveAudioLevel>0.001){
+      current={open:liveAudioLevel,rms:liveAudioLevel,speaking:liveAudioSpeaking};
     }
-    if(current.emotion)direction=current.emotion;
+    // The live status bridge is authoritative once a conversation is active.
+    // A queued ElevenLabs segment may carry the emotion from its own start;
+    // letting that stale tag overwrite a newer poll made real conversations
+    // look frozen even though the server had moved to engaged, wary or hurt.
     if(!entranceDone)nextBlink=elapsed+4;
     if(entranceDone&&!reduced.matches&&elapsed>nextBlink){blinkStart=elapsed;nextBlink=elapsed+5.5+(Math.sin(elapsed*2)+1)*1.9;}
     // Brief closed hold lets the linked lids meet before reopening.
     const age=elapsed-blinkStart,blink=age<0||age>=.32?0:age<.10?age/.10:age<.15?1:1-(age-.15)/.17;
     let p=pose.step(current,direction,dt,blink);
-    if(studyStarted!==null){const t=(now-studyStarted)/1000;if(t>20){studyStarted=null;study.textContent='Run movement study';}else p=studyPose(t);}
+    let studyLabel=null;
+    if(studyStarted!==null){const t=(now-studyStarted)/1000;if(t>20){studyStarted=null;study.textContent='Run movement study';}else{p=studyPose(t);studyLabel='Movement study';}}
+    if(emotionStudyStarted!==null){const t=(now-emotionStudyStarted)/1000,total=emotionalArc.reduce((sum,item)=>sum+item[1],0);if(t>total){emotionStudyStarted=null;emotionStudy.textContent='Run emotional arc';direction='curious';pose.reset();}else{const result=emotionStudyPose(t);direction=result.emotion;p=result.pose;studyLabel='Emotion study · '+result.emotion;}}
     if(forced)p=forced;
     const entry=updateEntrance(now);
     p.CH8=THREE.MathUtils.lerp(1,p.CH8,entry.eyeOpen);
     controls.update();model.update(p,camera.position,entry.complete);diagnostics.gaze=model.state.gaze;
     // The Blender pivot carries the whole head, wig and terminals together.
-    updateLaboratoryLights(elapsed);updateLightning(now);renderer.render(scene,camera);
+    updateLaboratoryLights(elapsed,p.LED_BOLTS);updateLightning(now);renderer.render(scene,camera);
     if(firstCreatureFrame){firstCreatureFrame=false;dismissAwakeningCue();}
-    diagnostics.frames++;diagnostics.pose=p;diagnostics.speaking=current.speaking;diagnostics.direction=direction;diagnostics.phase=phase;diagnostics.queuedSegments=timeline.segments.length;
+    diagnostics.frames++;diagnostics.pose=p;diagnostics.speaking=current.speaking;diagnostics.direction=direction;diagnostics.cue=pose.cueName;diagnostics.cueAge=pose.cueAge;diagnostics.emotionAge=pose.emotionAge;diagnostics.accent=pose.accent;diagnostics.expressive=pose.expressive;diagnostics.phase=phase;diagnostics.queuedSegments=timeline.segments.length;
     diagnostics.triangles=renderer.info.render.triangles;
     if(now-lastUi>100){lastUi=now;
       renderer.domElement.dataset.rigState=JSON.stringify({...model.state,frames:diagnostics.frames});
       host.dataset.lampLevels=JSON.stringify(diagnostics.lampLevels||[]);
       host.dataset.lightning=JSON.stringify(diagnostics.lightning);
       host.dataset.view=JSON.stringify(diagnostics.view);
-      label.textContent=studyStarted!==null?'Movement study':current.speaking?'Speaking · '+direction:phase==='connected'?'Listening':'At rest';
+      const cueLabel=pose.cueName!=='none'?' · '+pose.cueName:'';
+      label.textContent=studyLabel||(current.speaking?'Speaking · '+direction+cueLabel:phase==='connected'?'Listening'+cueLabel:'At rest');
       study.disabled=document.querySelector('#start').disabled;
+      emotionStudy.disabled=study.disabled;
       replayEntrance.disabled=study.disabled;
       document.querySelector('#emotion-name').textContent=direction;
       document.querySelector('#jaw-level').style.width=(p.M1*100)+'%';
-      for(const row of meters.children){const id=row.dataset.channel,value=p[id];row.querySelector('meter').value=id==='M1'||id==='CH8'?value:(value+1)/2;row.querySelector('output').textContent=Math.round(value*100)+'%';}
+      for(const row of meters.children){const id=row.dataset.channel,value=p[id]??0;row.querySelector('meter').value=id==='M1'||id==='CH8'||id==='LED_BOLTS'?value:(value+1)/2;row.querySelector('output').textContent=Math.round((id==='M1'||id==='CH8'||id==='LED_BOLTS'?value:(value+1)/2)*100)+'%';}
     }
   });
   diagnostics.ready=true;label.textContent='At rest';

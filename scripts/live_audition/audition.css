@@ -27,14 +27,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .menu-section+.menu-section,.transcript{border-top:1px solid var(--line);margin-top:24px;padding-top:20px}
 h2{font-size:16px;font-weight:500;margin:0 0 8px}.section-label{font:10px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 5px}
 .voice-name{font:23px Georgia,serif;margin:8px 0 5px}.voice-note{font-size:12px;color:var(--muted);margin:0 0 16px}
+.audition-fields{display:grid;gap:12px;margin:0 0 16px}.audition-fields label{display:grid;gap:6px;color:var(--muted);font-size:12px;letter-spacing:.04em}.audition-fields select{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:9px 10px;font:inherit;min-height:44px;width:100%}.audition-fields select:disabled{opacity:.45}
+.expressive-control{display:flex;align-items:center;gap:8px;min-height:44px;color:var(--ink);font-size:13px}.expressive-control input{accent-color:var(--accent);width:18px;height:18px}.expressive-control input:disabled{opacity:.45}
 .actions{display:flex;gap:8px}#status{font-size:13px;margin:14px 0 4px;color:var(--accent);overflow-wrap:anywhere}
 .fine,.scope{font-size:11px;color:var(--muted)}.scope{margin-top:16px}.divider{height:1px;background:var(--line);margin:23px 0}
 .direction{display:flex;align-items:center;justify-content:space-between;font-size:12px}.direction strong{text-transform:capitalize;color:var(--accent);font-weight:500}
 .jaw-track{height:3px;background:var(--line);margin:15px 0 6px}#jaw-level{width:0;height:100%;background:var(--accent)}
 audio{width:100%;height:36px;margin:14px 0 0}#output{display:none}
 details{font-size:12px;color:var(--muted);margin-top:18px}summary{cursor:pointer;color:var(--ink);padding:8px 0}details p{margin:8px 0}
-.mechanism-row{display:grid;grid-template-columns:30px 1fr 50px 34px;align-items:center;gap:5px;margin:10px 0;font-size:10px}
-.channel{font-family:ui-monospace,monospace;color:var(--accent)}meter{width:50px;height:6px;accent-color:var(--accent)}output{text-align:right;font:10px ui-monospace,monospace}
+.mechanism-row{display:grid;grid-template-columns:minmax(94px,7rem) minmax(0,1fr) minmax(62px,4.5rem) minmax(36px,3rem);align-items:center;gap:8px;margin:10px 0;font-size:10px}
+.mechanism-row>*{min-width:0}.channel{font-family:ui-monospace,monospace;color:var(--accent);white-space:nowrap}.mechanism-label{min-width:0;overflow-wrap:anywhere}.mechanism-row meter{width:100%;min-width:0;height:6px;accent-color:var(--accent)}.mechanism-row output{min-width:36px;text-align:right;font:10px ui-monospace,monospace;white-space:nowrap}
 #scene-state{font:12px ui-monospace,monospace;color:var(--accent)}
 .view-controls,.lighting-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:12px;color:var(--muted);margin-top:14px}
 .view-controls button,.lighting-controls button{font-size:12px;padding:8px 10px}

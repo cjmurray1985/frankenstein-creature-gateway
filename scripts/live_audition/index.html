@@ -22,13 +22,18 @@
   <section class="menu-section" aria-label="Audition controls">
 
 <p class="section-label">The voice</p>
-<p class="voice-name">Mourning Colossus</p>
-<p class="voice-note">ElevenLabs voice · GPT-Live conversation</p>
-<select id="mode" hidden aria-hidden="true"><option value="elevenlabs" selected>ElevenLabs</option></select>
-<select id="voice" hidden aria-hidden="true"><option value="vesper" selected>Vesper</option></select>
+<p class="voice-name" id="voice-name">GPT-Live · Meridian</p>
+<p class="voice-note" id="voice-note">Native voice · Mourning Colossus—labored breath style</p>
+<div class="audition-fields">
+  <label>Output path<select id="mode"><option value="builtin_dsp_natural_clear" selected>GPT-Live + naturalized-clear Colossus DSP</option><option value="builtin_dsp_deep">GPT-Live + deep-clear Colossus DSP</option><option value="builtin_dsp_natural">GPT-Live + naturalized Colossus DSP</option><option value="builtin_dsp_match">GPT-Live + spectrum-matched Colossus DSP</option><option value="builtin_dsp">GPT-Live + original Colossus DSP</option><option value="builtin">GPT-Live raw voice</option><option value="elevenagents">ElevenAgents WebRTC</option><option value="elevenlabs_smooth">ElevenLabs control · smooth stream</option><option value="elevenlabs">ElevenLabs control</option></select></label>
+  <label>Base voice<select id="voice"><option value="vesper">Vesper · British</option><option value="stone">Stone · Irish</option><option value="ripple">Ripple · Australian</option><option value="meridian">Meridian · North American</option><option value="beacon">Beacon · Filipino</option><option value="cinder" selected>Cinder · Southern U.S.</option></select></label>
+<label>Performance style<select id="style-preset"><option value="labored" selected>Mourning Colossus · labored breath</option><option value="restrained">Mourning Colossus · restrained</option><option value="abyssal">Mourning Colossus · abyssal</option><option value="shelleyan">Shelleyan · wounded intelligence</option><option value="shelleyan_clear">Shelleyan · lucid language</option></select></label>
+</div>
+<label class="expressive-control"><input id="expressive-emotion" type="checkbox" checked> More expressive emotion</label>
+<p class="fine">Amplifies the Creature’s gaze, neck, eyelids, bolt-light proxy and brief social gestures. Voice and audio latency are unchanged.</p>
 <div class="actions"><button id="stop" class="secondary" disabled>End audition</button></div>
 <p id="status" role="status">Ready. Up to twenty minutes per encounter.</p>
-<p class="fine">Microphone → OpenAI. Replies → ElevenLabs.<br>No audition recording saved. Headphones recommended.</p>
+<p class="fine" id="path-note">Microphone and replies → GPT-Live. Style is prompt-directed, not voice cloning.<br>No audition recording saved. Headphones recommended.</p>
 <audio id="output" controls autoplay playsinline></audio>
 <div class="divider"></div>
 <p class="section-label">Performance</p>
@@ -38,9 +43,10 @@
 <audio id="reference" controls playsinline preload="none" src="/reference.wav"></audio>
 <details><summary>Mechanisms &amp; fidelity</summary>
 <div id="mechanism-meters"></div>
-<p>CH4–CH7: eye axes. CH8: linked upper/lower eyelids, with blinks and emotional narrowing. M1: local mouth opening beneath continuous skin. The chin stays attached. Neck side-to-side and front/back motion follow the full-head reference footage.</p>
-<p>Neck movement exists; its individual CH1–CH3 assignments remain unresolved. The visual rig therefore uses semantic neck controls, not guessed electrical channel numbers. Motion percentages are visual estimates, not PWM commands.</p>
-<p>The existing conversational emotion rules provide the same direction to ElevenLabs and the eyes and neck posture. This is not acoustic emotion recognition. Reference playback uses a curious direction.</p>
+<p>CH4/PWM0 and CH5/PWM1: right and left eye vertical axes. CH6/PWM2 and CH7/PWM3: left and right eye horizontal axes. CH8/PWM4: linked eyelids. CH1/PWM5: neck flexion/extension; CH2/PWM6: neck rotation; CH3/PWM7: neck lateral flexion. M1 controls mouth opening. The left and right neck-bolt LEDs are represented as one shared auxiliary signal.</p>
+<p>This is a virtual actuator test bench: percentages are normalized motion/signal estimates, never direct PWM commands. The PCA outputs are shown so browser behavior can be compared with the eventual servo and LED signal routes. Neck presentation angles are intentionally enlarged for a viewer about five feet away; they are not hardware calibration.</p>
+<p>The existing conversational emotion rules provide the same direction to ElevenLabs and the eyes and neck posture. A separate semantic cue—think, agree, disagree, listening, surprise, startle, suspicion, repair, plead, relief or withdraw—adds one intentional gesture without turning every word into a motor command. This is not acoustic emotion recognition. Reference playback uses a curious direction.</p>
+<p>Emotion motion is semantic body language: curiosity acquires with the eyes first; attentive listening becomes still and direct; hope opens the lids and leans toward Christopher; engagement holds contact with a slow scan; suspicion leads with a side-eye and a small inter-eye offset; startle opens the gaze and briefly recoils; vulnerability looks upward and asks him to remain; relief releases tension; wariness turns aside; hurt lowers and averts; earned anger advances with a firmer stare; withdrawal looks away and becomes still. With <em>More expressive emotion</em> enabled (the default), these readable changes and social gestures are deliberately easier to see; turn it off for the restrained comparison. Speech adds sparse phrase-level emphasis rather than syllable-by-syllable servo chatter. The normalized <code>LED_BOLTS</code> value drives two dim visual proxy lights only; it is not a calibrated PWM command.</p>
 <p>This is the KIRI scan of the physical Creature, prepared in Blender. The eye shells stay fixed while irises/pupils move; linked lids close independently over them. Drag to inspect the scan from any side; motion limits remain estimates.</p>
 <p>The entrance uses a virtual waist hinge for staging. The viewpoint assumes an eight-foot creature, a five-foot-eleven visitor and five feet of separation; these are presentation proportions, not measured actuator travel.</p>
 <p><a href="/assets/head-reference.png" target="_blank" rel="noopener">Original full-head reference</a></p>
@@ -51,7 +57,7 @@
   <section class="menu-section" aria-label="Scene controls">
     <h2>Scene</h2><p id="scene-state" role="status">Loading the Blender head…</p>
     <p class="fine">Drag the head to orbit · Pinch or scroll to inspect</p>
-  <div class="view-controls"><button class="secondary" id="reset-view">Reset view</button><label><input type="checkbox" id="wireframe"> Inspect mesh</label><button class="secondary" id="motion-study">Run movement study</button><button class="secondary" id="replay-entrance">Replay entrance</button></div>
+  <div class="view-controls"><button class="secondary" id="reset-view">Reset view</button><label><input type="checkbox" id="wireframe"> Inspect mesh</label><button class="secondary" id="motion-study">Run movement study</button><button class="secondary" id="emotion-study">Run emotional arc</button><button class="secondary" id="replay-entrance">Replay entrance</button></div>
   <div class="lighting-controls" aria-label="Scene lighting">
     <div class="lighting-field"><label for="lighting-preset">Lighting</label><select id="lighting-preset"><option value="laboratory">Laboratory</option><option value="moody">Moody</option><option value="moonlight">Moonlight</option><option value="studio">Studio</option></select></div>
     <div class="lighting-field"><label for="lighting-level">Brightness</label><input id="lighting-level" type="range" min="50" max="150" step="5" value="100"><output id="lighting-value" for="lighting-level">100%</output></div>
@@ -67,20 +73,59 @@
 </dialog>
 <script type="module" src="/creature-scene.mjs"></script>
 <script>
-const token='__TOKEN__', start=document.querySelector('#start'), stop=document.querySelector('#stop'), status=document.querySelector('#status'), mode=document.querySelector('#mode'), voice=document.querySelector('#voice'), audio=document.querySelector('#output'), captions=document.querySelector('#captions'), reference=document.querySelector('#reference');
-// Explicit initial flush lets ElevenLabs begin from four complete words;
-// later batches retain more context, and the final-tail boundary is unchanged.
+const token='__TOKEN__', ELEVEN_AGENT_ID='agent_6201m3fsx248fprvj4sf18c7th4n', start=document.querySelector('#start'), stop=document.querySelector('#stop'), status=document.querySelector('#status'), mode=document.querySelector('#mode'), voice=document.querySelector('#voice'), stylePreset=document.querySelector('#style-preset'), expressiveEmotion=document.querySelector('#expressive-emotion'), audio=document.querySelector('#output'), captions=document.querySelector('#captions'), reference=document.querySelector('#reference');
+// The legacy path starts after four words for minimum latency. The smooth path
+// waits for sentence-shaped batches and adds a short playback prebuffer so the
+// provider has enough context and the browser can absorb network jitter.
 const SPEECH_IDLE_MS=1100, SPEECH_MIN_CHARS=40, SPEECH_MIN_WORDS=8, SPEECH_FIRST_CHARS=20, SPEECH_FIRST_WORDS=4;
+const SMOOTH_MIN_WORDS=12, SMOOTH_FIRST_MIN_WORDS=6, SMOOTH_PLAYBACK_LEAD=0.22;
 let peer, channel, microphone, ready=false, closing=false, finalized=false, limitTimer, closeTimer, connectTimer, pollTimer, speechTimer, speechText='', speechGeneration=0, speechSocket, speechQueue=[], speechStarted=false, audioContext, nextAudioTime=0, speechSources=new Set();
+let elevenConversation=null, elevenMeterTimer=null, elevenSpeaking=false, elevenSdkPromise=null;
+let liveDspNodes=[],liveDspMedia=null,liveDspMeterTimer,dspModuleReady;
 let speechInputEnded=false,speechIdle=false;
-let visitorText='',visitorFinished=false,speechEmotion='curious',referenceDecode=null;
+let visitorText='',visitorFinished=false,speechEmotion='curious',speechCue='none',referenceDecode=null;
 let connectionAttempt=0;
 window.auditionState={phase:'ready',audioReceived:false};
 function state(phase,message){window.auditionState.phase=phase;status.textContent=message;window.creatureSimulation?.setPhase(phase);window.encounterUI?.setPhase(phase,ready,message);}
 function stopScheduledAudio(){for(const source of speechSources){try{source.stop();}catch{}}speechSources.clear();nextAudioTime=0;window.creatureSimulation?.stop();}
-function interruptEleven(){speechGeneration++;clearTimeout(speechTimer);speechText='';speechQueue=[];speechStarted=false;speechInputEnded=false;speechIdle=false;if(speechSocket){try{speechSocket.send(JSON.stringify({type:'cancel'}));}catch{}speechSocket.close();speechSocket=null;}stopScheduledAudio();audio.pause();audio.currentTime=0;audio.removeAttribute('src');audio.load();}
+function stopLiveDsp(){clearInterval(liveDspMeterTimer);liveDspMeterTimer=null;if(liveDspMedia){liveDspMedia.pause();liveDspMedia.srcObject=null;liveDspMedia=null;}for(const node of liveDspNodes){try{node.port?.postMessage({type:'reset'});node.disconnect();}catch{}}liveDspNodes=[];}
+async function stopElevenAgent(){clearInterval(elevenMeterTimer);elevenMeterTimer=null;elevenSpeaking=false;window.creatureSimulation?.setLiveAudioLevel(0,false);const conversation=elevenConversation;elevenConversation=null;if(conversation){try{await conversation.endSession();}catch{}}}
+function rms(analyser,buffer){analyser.getFloatTimeDomainData(buffer);let energy=0;for(const sample of buffer)energy+=sample*sample;return Math.sqrt(energy/buffer.length);}
+async function connectLiveDsp(track,remoteStream){
+  dspModuleReady=dspModuleReady||audioContext.audioWorklet.addModule('/mourning-colossus-worklet.js');
+  await dspModuleReady;stopLiveDsp();
+  const stream=remoteStream||new MediaStream([track]);
+  const media=document.createElement('audio');media.autoplay=true;media.playsInline=true;media.volume=0;media.srcObject=stream;
+  const source=audioContext.createMediaStreamSource(stream);
+  const deep=mode.value==='builtin_dsp_deep',clear=mode.value==='builtin_dsp_natural_clear',natural=mode.value==='builtin_dsp_natural',matched=mode.value==='builtin_dsp_match';
+  const shifter=new AudioWorkletNode(audioContext,'mourning-colossus-pitch',{numberOfInputs:1,numberOfOutputs:2,outputChannelCount:[1,1],channelCount:1,processorOptions:{variant:deep?'deep':'standard'}});
+  const dry=audioContext.createGain(),mainHigh=audioContext.createBiquadFilter(),mainLow=audioContext.createBiquadFilter(),presence=audioContext.createBiquadFilter(),mainGain=audioContext.createGain();
+  const airHigh=audioContext.createBiquadFilter(),airDelay=audioContext.createDelay(.25),airGain=audioContext.createGain();
+  const subLow=audioContext.createBiquadFilter(),subHigh=audioContext.createBiquadFilter(),subGain=audioContext.createGain(),mix=audioContext.createGain();
+  const compressor=audioContext.createDynamicsCompressor(),makeup=audioContext.createGain(),limiter=audioContext.createDynamicsCompressor();
+  const rawMeter=audioContext.createAnalyser(),outputMeter=audioContext.createAnalyser(),silentMeter=audioContext.createGain();silentMeter.gain.value=0;rawMeter.fftSize=256;outputMeter.fftSize=256;
+  // Unlike the offline FFmpeg chain, the real-time pitch shifter carries a
+  // bounded look-behind buffer. A parallel dry layer therefore arrives early
+  // and sounds like a second speaker. Keep it silent unless fail-open is needed.
+  dry.gain.value=0;mainHigh.type='highpass';mainHigh.frequency.value=32;mainLow.type='lowpass';mainLow.frequency.value=10200;presence.type='highshelf';presence.frequency.value=2500;presence.gain.value=deep?3:clear?4:natural?5:matched?9.5:0;mainGain.gain.value=.94;
+  // Preserve only unshifted air, breath and consonant edges. The pitch core's
+  // look-behind is ~150 ms, so this narrow layer is delayed into alignment and
+  // cannot read as the early, full-band second voice removed in the prior pass.
+  airHigh.type='highpass';airHigh.frequency.value=(deep||clear)?4200:3200;airDelay.delayTime.value=.15;airGain.gain.value=deep?.06:clear?.06:natural?.14:0;
+  subLow.type='lowpass';subLow.frequency.value=(deep||clear)?1600:2100;subHigh.type='highpass';subHigh.frequency.value=28;subGain.gain.value=(deep||clear)?.02:(natural||matched)?.03:.10;
+  compressor.threshold.value=-18.4;compressor.ratio.value=2;compressor.attack.value=.02;compressor.release.value=.24;makeup.gain.value=deep?3.2:clear?3.3:natural?3.4:matched?3.75:2.2;
+  limiter.threshold.value=-2;limiter.knee.value=0;limiter.ratio.value=20;limiter.attack.value=.005;limiter.release.value=.1;
+  shifter.onprocessorerror=()=>{dry.gain.setValueAtTime(1,audioContext.currentTime);window.auditionState.dspFallback=true;state('connected','Local pitch processor stopped; playing the raw GPT-Live voice.');};
+  source.connect(rawMeter).connect(silentMeter).connect(audioContext.destination);source.connect(dry).connect(mix);source.connect(airHigh).connect(airDelay).connect(airGain).connect(mix);source.connect(shifter);shifter.connect(mainHigh,0,0);mainHigh.connect(mainLow).connect(presence).connect(mainGain).connect(mix);shifter.connect(subLow,1,0);subLow.connect(subHigh).connect(subGain).connect(mix);mix.connect(compressor).connect(makeup).connect(limiter).connect(outputMeter).connect(audioContext.destination);
+  liveDspMedia=media;await media.play();
+  const rawBuffer=new Float32Array(rawMeter.fftSize),outputBuffer=new Float32Array(outputMeter.fftSize);
+  liveDspMeterTimer=setInterval(()=>{const raw=rms(rawMeter,rawBuffer),processed=rms(outputMeter,outputBuffer);status.dataset.dspRawRms=raw.toFixed(6);status.dataset.dspOutputRms=processed.toFixed(6);status.dataset.dspRawPeakRms=Math.max(raw,Number(status.dataset.dspRawPeakRms||0)).toFixed(6);status.dataset.dspOutputPeakRms=Math.max(processed,Number(status.dataset.dspOutputPeakRms||0)).toFixed(6);const mouthLevel=Math.max(0,Math.min(1,(processed-.009)*7.5));window.creatureSimulation?.setLiveAudioLevel(mouthLevel,processed>.012);},100);
+  liveDspNodes=[source,shifter,dry,airHigh,airDelay,airGain,mainHigh,mainLow,presence,mainGain,subLow,subHigh,subGain,mix,compressor,makeup,limiter,rawMeter,outputMeter,silentMeter];
+  window.auditionState.dspEstimatedBufferMs=150;
+}
+function interruptEleven(){speechGeneration++;clearTimeout(speechTimer);speechText='';speechQueue=[];speechStarted=false;speechInputEnded=false;speechIdle=false;if(speechSocket){try{speechSocket.send(JSON.stringify({type:'cancel'}));}catch{}speechSocket.close();speechSocket=null;}if(elevenConversation)stopElevenAgent();stopScheduledAudio();audio.pause();audio.currentTime=0;audio.removeAttribute('src');audio.load();}
 function enoughText(text,initial=false){return text.length>=(initial?SPEECH_FIRST_CHARS:SPEECH_MIN_CHARS)&&text.trim().split(/\s+/).length>=(initial?SPEECH_FIRST_WORDS:SPEECH_MIN_WORDS);}
-function playPcm(arrayBuffer,generation){if(generation!==speechGeneration||closing||!arrayBuffer.byteLength)return;const samples=new Int16Array(arrayBuffer), floats=new Float32Array(samples.length);for(let i=0;i<samples.length;i++)floats[i]=samples[i]/32768;const buffer=audioContext.createBuffer(1,floats.length,44100);buffer.copyToChannel(floats,0);const source=audioContext.createBufferSource();source.buffer=buffer;source.connect(audioContext.destination);const when=Math.max(audioContext.currentTime+0.06,nextAudioTime);source.start(when);window.creatureSimulation?.attachAudio(audioContext);window.creatureSimulation?.schedule(floats,44100,when,speechEmotion);nextAudioTime=when+buffer.duration;speechSources.add(source);source.onended=()=>speechSources.delete(source);if(window.auditionState.firstPcmAt==null)window.auditionState.firstPcmAt=performance.now();}
+function playPcm(arrayBuffer,generation){if(generation!==speechGeneration||closing||!arrayBuffer.byteLength)return;const samples=new Int16Array(arrayBuffer), floats=new Float32Array(samples.length);for(let i=0;i<samples.length;i++)floats[i]=samples[i]/32768;const buffer=audioContext.createBuffer(1,floats.length,44100);buffer.copyToChannel(floats,0);const source=audioContext.createBufferSource();source.buffer=buffer;source.connect(audioContext.destination);const lead=mode.value==='elevenlabs_smooth'?SMOOTH_PLAYBACK_LEAD:0.06;const when=Math.max(audioContext.currentTime+lead,nextAudioTime);source.start(when);window.creatureSimulation?.attachAudio(audioContext);window.creatureSimulation?.schedule(floats,44100,when,speechEmotion);nextAudioTime=when+buffer.duration;speechSources.add(source);source.onended=()=>speechSources.delete(source);if(window.auditionState.firstPcmAt==null)window.auditionState.firstPcmAt=performance.now();}
 function sendSpeech(message){if(speechSocket?.readyState===WebSocket.OPEN)speechSocket.send(JSON.stringify(message));else speechQueue.push(message);}
 function beginSpeech(text,endImmediately=false){
   if(closing||speechSocket)return;
@@ -91,7 +136,7 @@ function beginSpeech(text,endImmediately=false){
   state('rendering','Streaming the Mourning Colossus…');
   const socket=new WebSocket(`ws://localhost:8768/speech?token=${encodeURIComponent(token)}`);
   speechSocket=socket;socket.binaryType='arraybuffer';
-  speechQueue.push({type:'start',text,visitor_text:visitorText});
+  speechQueue.push({type:'start',text,visitor_text:visitorText,mode:mode.value});
   if(endImmediately)speechQueue.push({type:'end'});
   socket.onopen=()=>{
     if(generation!==speechGeneration)return;
@@ -101,7 +146,7 @@ function beginSpeech(text,endImmediately=false){
     if(generation!==speechGeneration)return;
     if(event.data instanceof ArrayBuffer){receivedPcm=true;playPcm(event.data,generation);return;}
     const message=JSON.parse(event.data);
-    if(message.type==='direction'){speechEmotion=message.emotion;window.auditionState.emotion=speechEmotion;}
+    if(message.type==='direction'){speechEmotion=message.emotion;speechCue=message.cue||'none';window.auditionState.emotion=speechEmotion;window.auditionState.cue=speechCue;window.creatureSimulation?.setDirection?.(speechEmotion);window.creatureSimulation?.setCue?.(speechCue);}
     else if(message.type==='done'){
       completed=true;socket.close();speechSocket=null;speechStarted=false;speechInputEnded=false;
       state('connected','Live through ElevenLabs—speak or interrupt naturally.');
@@ -125,6 +170,23 @@ function beginSpeech(text,endImmediately=false){
 function takeSpeechText(final){
   // Live deltas can split a word. The provider adapter separates chunks with
   // spaces, so only send complete words (and complete bracketed cues).
+  const smooth=mode.value==='elevenlabs_smooth';
+  if(smooth){
+    let boundary=final?speechText.length:0,brackets=0,lastSentence=0;
+    if(!final){
+      for(let i=0;i<speechText.length;i++){
+        if(speechText[i]==='[')brackets++;
+        else if(speechText[i]===']')brackets=Math.max(0,brackets-1);
+        else if(!brackets&&/[.!?]/.test(speechText[i])&&/\s/.test(speechText[i+1]||'')){lastSentence=i+1;while(/\s/.test(speechText[lastSentence]||''))lastSentence++;}
+      }
+      const sentence=speechText.slice(0,lastSentence);
+      const words=sentence.trim().split(/\s+/).filter(Boolean).length;
+      const minimum=speechStarted?SMOOTH_MIN_WORDS:SMOOTH_FIRST_MIN_WORDS;
+      if(lastSentence&&words>=minimum)boundary=lastSentence;
+      else if(!lastSentence||!enoughText(speechText.slice(0,lastSentence||speechText.length),speechStarted))return '';
+    }
+    const text=speechText.slice(0,boundary);speechText=speechText.slice(boundary);return text;
+  }
   let boundary=final?speechText.length:0,brackets=0;
   if(!final){
     for(let i=0;i<speechText.length;i++){
@@ -148,49 +210,100 @@ function appendSpeech(delta){
   clearTimeout(speechTimer);speechTimer=setTimeout(finishSpeech,SPEECH_IDLE_MS);
 }
 function finishSpeech(){clearTimeout(speechTimer);speechIdle=true;drainSpeech(true);}
-function cleanup(){connectionAttempt++;finalized=true;interruptEleven();clearTimeout(limitTimer);clearTimeout(closeTimer);clearTimeout(connectTimer);clearInterval(pollTimer);ready=false;if(channel){channel.onclose=null;channel.onmessage=null;}if(peer){peer.onconnectionstatechange=null;peer.ontrack=null;}microphone?.getTracks().forEach(t=>t.stop());channel?.close();peer?.close();audio.srcObject=null;start.disabled=false;stop.disabled=true;voice.disabled=false;mode.disabled=false;window.encounterUI?.reset();}
+function appendElevenMessage(message){
+  const role=message?.role||(message?.source==='ai'?'agent':message?.source);
+  if(role!=='user'&&role!=='agent')return;
+  const speaker=role==='user'?'Christopher':'Creature';
+  if(window.auditionState.lastSpeaker!==speaker){captions.append(document.createTextNode('\n\n'+speaker+': '));window.auditionState.lastSpeaker=speaker;}
+  captions.append(document.createTextNode(message.message||''));captions.scrollTop=captions.scrollHeight;
+}
+async function loadElevenSdk(){
+  elevenSdkPromise=elevenSdkPromise||import('https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.25.0/+esm');
+  return elevenSdkPromise;
+}
+async function startElevenAgent(attempt){
+  state('connecting','Connecting to ElevenAgents over WebRTC…');
+  const {Conversation}=await loadElevenSdk();
+  const conversation=await Conversation.startSession({
+    agentId:ELEVEN_AGENT_ID,connectionType:'webrtc',
+    onConnect:({conversationId})=>{if(attempt!==connectionAttempt||closing)return;ready=true;window.auditionState.audioReceived=true;window.auditionState.conversationId=conversationId;clearTimeout(connectTimer);state('connected','Live through ElevenAgents WebRTC—speak or interrupt naturally.');},
+    onDisconnect:()=>{if(attempt!==connectionAttempt||closing)return;window.auditionState.error='ElevenAgents disconnected.';state('ended',window.auditionState.error);cleanup();},
+    onMessage:appendElevenMessage,
+    onModeChange:({mode:value})=>{elevenSpeaking=value==='speaking';window.creatureSimulation?.setLiveAudioLevel(elevenSpeaking?1:0,elevenSpeaking);},
+    onError:(message)=>{if(attempt!==connectionAttempt||closing)return;window.auditionState.error='ElevenAgents: '+message;state('error',window.auditionState.error);end();},
+  });
+  if(attempt!==connectionAttempt||closing){await conversation.endSession().catch(()=>{});return;}
+  elevenConversation=conversation;
+  elevenMeterTimer=setInterval(()=>{
+    if(!elevenConversation)return;
+    try{
+      const bins=conversation.getOutputByteFrequencyData?.();
+      let level=0;if(bins?.length){for(const value of bins)level+=value;level/=bins.length*255;}
+      window.creatureSimulation?.setLiveAudioLevel(Math.min(1,level*2.2),elevenSpeaking);
+    }catch{}
+  },80);
+  limitTimer=setTimeout(end,1200000);
+}
+function cleanup(){connectionAttempt++;finalized=true;interruptEleven();stopLiveDsp();clearTimeout(limitTimer);clearTimeout(closeTimer);clearTimeout(connectTimer);clearInterval(pollTimer);ready=false;if(channel){channel.onclose=null;channel.onmessage=null;}if(peer){peer.onconnectionstatechange=null;peer.ontrack=null;}microphone?.getTracks().forEach(t=>t.stop());channel?.close();peer?.close();audio.srcObject=null;start.disabled=false;stop.disabled=true;voice.disabled=false;mode.disabled=false;stylePreset.disabled=false;refreshVoiceSummary();window.encounterUI?.reset();}
 async function signalStop(){await fetch('/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token}),keepalive:true}).catch(()=>{});}
-function end(){if(closing)return;closing=true;stop.disabled=true;microphone?.getTracks().forEach(t=>t.stop());interruptEleven();state('closing','Ending audition…');signalStop();if(channel?.readyState==='open')channel.send(JSON.stringify({type:'session.close'}));closeTimer=setTimeout(()=>{state('ended','Ended. Final usage confirmation unavailable.');cleanup();},15000);}
+function end(){if(closing)return;closing=true;stop.disabled=true;microphone?.getTracks().forEach(t=>t.stop());interruptEleven();if(mode.value==='elevenagents'){state('ended','Ended.');cleanup();return;}state('closing','Ending audition…');signalStop();if(channel?.readyState==='open')channel.send(JSON.stringify({type:'session.close'}));closeTimer=setTimeout(()=>{state('ended','Ended. Final usage confirmation unavailable.');cleanup();},15000);}
 start.onclick=async()=>{
 const attempt=++connectionAttempt;
-start.disabled=true;stop.disabled=false;voice.disabled=true;mode.disabled=true;closing=false;finalized=false;visitorText='';visitorFinished=false;speechEmotion='curious';window.auditionState={phase:'connecting',audioReceived:false,mode:mode.value};captions.textContent='';reference.pause();interruptEleven();state('connecting','Connecting—allow microphone access if prompted.');
+start.disabled=true;stop.disabled=false;voice.disabled=true;mode.disabled=true;stylePreset.disabled=true;closing=false;finalized=false;visitorText='';visitorFinished=false;speechEmotion='curious';speechCue='none';window.auditionState={phase:'connecting',audioReceived:false,mode:mode.value,voice:voice.value,style:stylePreset.value,expressive:expressiveEmotion.checked};window.creatureSimulation?.setExpressive?.(expressiveEmotion.checked);captions.textContent='';reference.pause();interruptEleven();state('connecting','Connecting—allow microphone access if prompted.');
 try{
 if(!window.isSecureContext)throw Error('Open the laboratory’s HTTPS link to enable the microphone on your phone.');
 if(!navigator.mediaDevices?.getUserMedia)throw Error('Microphone access is unavailable. Open this page directly in Safari or Chrome.');
 // Unlock Web Audio in the tap handler, before microphone/network awaits.
 audioContext=audioContext||new AudioContext();await audioContext.resume();
 if(attempt!==connectionAttempt||closing)return;
+if(mode.value==='elevenagents'){await startElevenAgent(attempt);return;}
 peer=new RTCPeerConnection();
-peer.ontrack=e=>{window.auditionState.audioReceived=true;if(mode.value==='builtin'){audio.srcObject=new MediaStream([e.track]);audio.play().catch(()=>state('connected','Connected. Press play above to hear the Creature.'));}else{e.track.enabled=false;}};
+peer.ontrack=async e=>{window.auditionState.audioReceived=true;const remoteStream=e.streams?.[0]||new MediaStream([e.track]);if(mode.value==='builtin'){audio.srcObject=remoteStream;audio.play().catch(()=>state('connected','Connected. Press play above to hear the Creature.'));}else if(mode.value==='builtin_dsp'||mode.value==='builtin_dsp_match'||mode.value==='builtin_dsp_natural'||mode.value==='builtin_dsp_natural_clear'||mode.value==='builtin_dsp_deep'){try{await connectLiveDsp(e.track,remoteStream);}catch(error){window.auditionState.error='Local voice processing failed: '+error.message;state('error',window.auditionState.error);end();}}else{e.track.enabled=false;}};
 const acquired=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
 if(attempt!==connectionAttempt||closing){acquired.getTracks().forEach(t=>t.stop());return;}
 microphone=acquired;
 microphone.getAudioTracks().forEach(t=>peer.addTrack(t,microphone));
 channel=peer.createDataChannel('oai-events');
 channel.onmessage=({data})=>{const e=JSON.parse(data);if(e.type==='session.started'){
-ready=true;clearTimeout(connectTimer);if(document.hidden){leaveEncounter();return;}state('connected',mode.value==='elevenlabs'?'Live through ElevenLabs—waiting for the Creature’s invitation.':'Live—speak to the Creature. Ends automatically after twenty minutes.');
-channel.send(JSON.stringify({type:'session.instructions.append',event_id:crypto.randomUUID(),delegation_id:null,content:'Begin this encounter now with one brief, quiet invitation for Christopher to speak, then listen. Do not announce the audition.'}));
+ready=true;clearTimeout(connectTimer);if(document.hidden){leaveEncounter();return;}state('connected',(mode.value==='elevenlabs'||mode.value==='elevenlabs_smooth')?'Live through ElevenLabs—waiting for the Creature’s invitation.':mode.value==='builtin_dsp_deep'?'Live through deep local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_natural_clear'?'Live through naturalized-clear local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_natural'?'Live through naturalized local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_match'?'Live through spectrum-matched local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp'?'Live through original local Colossus processing—speak or interrupt naturally.':'Live raw voice—speak or interrupt naturally.');
+const openingDirection=stylePreset.value==='shelleyan_clear'
+  ?'Begin this encounter now in two or three quiet sentences. Notice Christopher, reveal a fragment of wary curiosity, and ask one pointed question that invites a real answer. Speak each sentence as a separate thought: let it land, leave an audible half-second of silence before the next sentence, and leave a longer silence after a grave realization. Do not announce the audition.'
+  :'Begin this encounter now in two or three quiet sentences. Notice Christopher, reveal a fragment of wary curiosity, and ask one pointed question that invites a real answer. Then listen. Do not announce the audition.';
+channel.send(JSON.stringify({type:'session.instructions.append',event_id:crypto.randomUUID(),delegation_id:null,content:openingDirection}));
 limitTimer=setTimeout(end,1200000);
 }else if(e.type==='session.closed'){finalized=true;window.auditionState.usage=e.usage;state('ended','Audition ended. You can start another session.');cleanup();}
 else if(e.type==='session.input_transcript.delta'||e.type==='session.output_transcript.delta'){
 const speaker=e.type.includes('input_')?'Christopher':'Creature';if(window.auditionState.lastSpeaker!==speaker){captions.append(document.createTextNode('\n\n'+speaker+': '));window.auditionState.lastSpeaker=speaker;}captions.append(document.createTextNode(e.delta));captions.scrollTop=captions.scrollHeight;
-if(mode.value==='elevenlabs'){if(speaker==='Christopher'){if(visitorFinished){visitorText='';visitorFinished=false;}visitorText+=e.delta;interruptEleven();}else{visitorFinished=true;appendSpeech(e.delta);}}
+if(mode.value==='elevenlabs'||mode.value==='elevenlabs_smooth'){if(speaker==='Christopher'){if(visitorFinished){visitorText='';visitorFinished=false;}visitorText+=e.delta;interruptEleven();}else{visitorFinished=true;appendSpeech(e.delta);}}
 }else if(e.type==='error'){window.auditionState.error=e.error;end();}};
 channel.onclose=()=>{if(!finalized&&!closing){signalStop();state('ended','Connection closed.');cleanup();}};
 peer.onconnectionstatechange=()=>{if(peer?.connectionState==='failed'){signalStop();state('error','Audio connection failed.');cleanup();}};
 await peer.setLocalDescription(await peer.createOffer());
 if(peer.iceGatheringState!=='complete')await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Connection setup timed out')),10000);peer.addEventListener('icegatheringstatechange',function check(){if(peer.iceGatheringState==='complete'){clearTimeout(timer);peer.removeEventListener('icegatheringstatechange',check);resolve();}});});
 if(attempt!==connectionAttempt||closing)return;
-const r=await fetch('/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,voice:voice.value,sdp:peer.localDescription.sdp})});
-const result=await r.json();if(r.status===401){location.href='/login';return;}if(!r.ok){const error=Error(r.status===403?'OpenAI denied Live voice access (403): '+(result.error||'Access denied')+' Check this API project’s Live access and key permissions.':result.error||'Session creation failed');error.status=r.status;throw error;}
+const r=await fetch('/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,voice:voice.value,style:stylePreset.value,mode:mode.value,sdp:peer.localDescription.sdp})});
+const result=await r.json();if(r.status===401){location.href='/login';return;}if(!r.ok){const stale=r.status===403&&result.code==='stale_audition_token';const error=Error(stale?result.error:r.status===403?'OpenAI denied Live voice access (403): '+(result.error||'Access denied')+' Check this API project’s Live access and key permissions.':result.error||'Session creation failed');error.status=r.status;error.code=result.code;throw error;}
 if(attempt!==connectionAttempt||closing){signalStop();return;}
 await peer.setRemoteDescription({type:'answer',sdp:result.transport.sdp});
 if(attempt!==connectionAttempt||closing)return;
 connectTimer=setTimeout(()=>{if(!ready){end();}},20000);
-pollTimer=setInterval(async()=>{try{const s=await(await fetch('/status')).json();if(s.stop_requested&&!closing)end();}catch{}},3000);
-}catch(e){if(attempt!==connectionAttempt)return;const limited=e.status===429;const message=limited?'The instruments have grown fevered. Let the current subside, then summon me again.':e.name==='NotAllowedError'?'Microphone permission was denied. Allow microphone access in this website’s browser settings, then try again.':e.message;window.auditionState.error=message;signalStop();cleanup();state(limited?'limit':'error',message);}
+pollTimer=setInterval(async()=>{try{const s=await(await fetch('/status')).json();if(s.emotion&&s.emotion!==window.auditionState.emotion){speechEmotion=s.emotion;window.auditionState.emotion=s.emotion;window.creatureSimulation?.setDirection?.(s.emotion);}if(s.cue&&s.cue!==window.auditionState.cue){speechCue=s.cue;window.auditionState.cue=s.cue;window.creatureSimulation?.setCue?.(s.cue);}if(s.stop_requested&&!closing)end();}catch{}},350);
+}catch(e){if(attempt!==connectionAttempt)return;const limited=e.status===429;const exhausted=limited&&e.code==='credit_balance_exhausted';const message=exhausted?'The OpenAI API project has exhausted its credit balance. Add API credits or use a funded Live-enabled project/key, then reload this page.':limited?'The instruments have grown fevered. Let the current subside, then summon me again.':e.name==='NotAllowedError'?'Microphone permission was denied. Allow microphone access in this website’s browser settings, then try again.':e.message;window.auditionState.error=message;signalStop();cleanup();state(exhausted?'billing':limited?'limit':'error',message);}
 };
 stop.onclick=end;
+function refreshVoiceSummary(){
+  const agents=mode.value==='elevenagents',eleven=mode.value==='elevenlabs'||mode.value==='elevenlabs_smooth',native=!agents&&!eleven,processed=mode.value==='builtin_dsp'||mode.value==='builtin_dsp_match'||mode.value==='builtin_dsp_natural'||mode.value==='builtin_dsp_natural_clear'||mode.value==='builtin_dsp_deep';
+  const voiceNames={ripple:'Ripple',vesper:'Vesper',stone:'Stone',meridian:'Meridian',beacon:'Beacon',cinder:'Cinder'};
+  const styleNames={labored:'Mourning Colossus · labored breath',restrained:'Mourning Colossus · restrained',abyssal:'Mourning Colossus · abyssal',shelleyan:'Shelleyan · wounded intelligence',shelleyan_clear:'Shelleyan · lucid language'};
+  const styleName=styleNames[stylePreset.value]||styleNames.labored;
+  document.querySelector('#voice-name').textContent=agents?'Mourning Colossus · ElevenAgents':native?'GPT-Live · '+(voiceNames[voice.value]||voiceNames.vesper):'Mourning Colossus';
+  const dspLabel=mode.value==='builtin_dsp_deep'?'deep-clear':mode.value==='builtin_dsp_natural_clear'?'naturalized-clear':mode.value==='builtin_dsp_natural'?'naturalized':mode.value==='builtin_dsp_match'?'spectrum-matched':'original';
+  document.querySelector('#voice-note').textContent=agents?'Published ElevenAgents WebRTC · Mourning Colossus · Flash v2 · Expressive Mode off':processed?'Native voice · '+dspLabel+' local pitch/subharmonic DSP · '+styleName:native?'Raw native voice · '+styleName+' style':mode.value==='elevenlabs_smooth'?'ElevenLabs control · sentence-batched smooth stream':'ElevenLabs control · GPT-Live conversation';
+  document.querySelector('#path-note').innerHTML=agents?'Microphone and replies → ElevenAgents WebRTC.<br>No local recording saved. Headphones recommended.':processed?'Microphone → GPT-Live. Only the locally transformed voice reaches the speaker.<br>No ElevenLabs request or audition recording. Headphones recommended.':native?'Microphone and replies → GPT-Live without processing.<br>No audition recording saved. Headphones recommended.':mode.value==='elevenlabs_smooth'?'Microphone → GPT-Live. Replies → ElevenLabs with sentence batching and playback buffering.<br>No audition recording saved. Headphones recommended.':'Microphone → GPT-Live. Replies → ElevenLabs Mourning Colossus.<br>No audition recording saved. Headphones recommended.';
+  voice.disabled=!native;
+}
+mode.addEventListener('change',refreshVoiceSummary);voice.addEventListener('change',refreshVoiceSummary);stylePreset.addEventListener('change',refreshVoiceSummary);refreshVoiceSummary();
+expressiveEmotion.addEventListener('change',()=>{window.auditionState.expressive=expressiveEmotion.checked;window.creatureSimulation?.setExpressive?.(expressiveEmotion.checked);});
 async function prepareReference(){
   audioContext=audioContext||new AudioContext();await audioContext.resume();
   if(!referenceDecode)referenceDecode=fetch('/reference.wav').then(r=>r.arrayBuffer()).then(b=>audioContext.decodeAudioData(b)).catch(e=>{referenceDecode=null;throw e;});
@@ -209,7 +322,7 @@ reference.onended=()=>window.creatureSimulation?.stop();
 function leaveEncounter(){
   reference.pause();
   if(!start.disabled&&!ready)return;
-  closing=true;signalStop();
+  closing=true;if(mode.value!=='elevenagents')signalStop();
   if(channel?.readyState==='open')channel.send(JSON.stringify({type:'session.close'}));
   cleanup();state('ended','Encounter ended while the page was away. Tap Speak to the Creature to reconnect.');
 }

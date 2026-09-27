@@ -17,12 +17,13 @@ const cases=[
   ['front-rest',{}],['mouth-half',{M1:.5}],['mouth-open',{M1:1}],
   ['blink-half',{CH8:.6}],['blink-closed',{CH8:1}],
   ['gaze-left',{CH6:-.8,CH7:-.8}],['gaze-right',{CH6:.8,CH7:.8}],
-  ['neck-left',{NECK_SIDE:-.85}],['neck-right',{NECK_SIDE:.85}],
-  ['neck-forward',{NECK_FB:.85}],['neck-back',{NECK_FB:-.85}],
+  ['neck-rotation-left',{CH2:-.85}],['neck-rotation-right',{CH2:.85}],
+  ['neck-flexion',{CH1:.85}],['neck-extension',{CH1:-.85}],
+  ['neck-lateral-left',{CH3:-.85}],['neck-lateral-right',{CH3:.85}],
   ['three-quarter',{},[.50,.10]],['three-quarter-mouth',{M1:1},[-.50,0]],
-  ['combined-left',{M1:1,NECK_SIDE:-1,NECK_FB:1,CH8:.6},[-.4,.1]],
-  ['combined-right',{M1:.75,NECK_SIDE:1,NECK_FB:-1},[.4,-.1]],
-  ['turned-blink',{CH8:1,NECK_SIDE:.5},[.4,0]],
+  ['combined-left',{M1:1,CH2:-1,CH1:1,CH3:.35,CH8:.6},[-.4,.1]],
+  ['combined-right',{M1:.75,CH2:1,CH1:-1,CH3:-.35},[.4,-.1]],
+  ['turned-blink',{CH8:1,CH2:.5},[.4,0]],
 ];
 const results=[];
 for(const [name,pose,camera] of cases){

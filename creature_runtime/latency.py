@@ -12,11 +12,16 @@ from .models import Emotion
 ACKNOWLEDGMENTS: dict[Emotion, tuple[str, str]] = {
     Emotion.DORMANT: ("i-wake-i-hear-you", "your-voice-has-reached-me"),
     Emotion.CURIOUS: ("let-me-consider", "your-question-is-not-small"),
+    Emotion.ATTENTIVE: ("i-am-listening", "go-on"),
     Emotion.HOPEFUL: ("i-hear-kindness", "stay-i-would-answer"),
     Emotion.ENGAGED: ("your-thought-has-reached-me", "i-follow-you"),
     Emotion.WARY: ("i-consider-your-purpose", "speak-plainly"),
+    Emotion.SUSPICIOUS: ("i-have-heard-this-before", "explain-yourself"),
+    Emotion.STARTLED: ("you-have-caught-me-unprepared", "give-me-a-moment"),
     Emotion.HURT: ("though-the-words-wound", "give-me-a-moment"),
+    Emotion.VULNERABLE: ("do-not-leave-yet", "i-would-ask-one-thing"),
     Emotion.ANGRY: ("take-care", "do-not-press-further"),
+    Emotion.RELIEVED: ("the-danger-has-passed", "i-can-breathe-again"),
     Emotion.WITHDRAWN: ("let-me-gather-what-remains", "i-am-not-yet-silent"),
 }
 

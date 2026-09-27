@@ -19,11 +19,16 @@ AudioProcessor = Callable[[Path, Path, str], None]
 _DIRECTION = {
     Emotion.DORMANT: "barely awake, profoundly low, weary",
     Emotion.CURIOUS: "profoundly low, watchful, quietly curious",
+    Emotion.ATTENTIVE: "profoundly low, still, listening with focused attention",
     Emotion.HOPEFUL: "profoundly low, weary, cautiously hopeful",
     Emotion.ENGAGED: "profoundly low, intent, stirred by fellowship",
     Emotion.WARY: "profoundly low, guarded, measuring every word",
+    Emotion.SUSPICIOUS: "profoundly low, wary, testing the truth of every word",
+    Emotion.STARTLED: "profoundly low, briefly shaken, breath caught by surprise",
     Emotion.HURT: "profoundly low, wounded, struggling to remain composed",
+    Emotion.VULNERABLE: "profoundly low, exposed, pleading without sentimentality",
     Emotion.ANGRY: "profoundly low, controlled anger beneath every word",
+    Emotion.RELIEVED: "profoundly low, slowly easing after fear has passed",
     Emotion.WITHDRAWN: "profoundly low, exhausted, retreating into grief",
 }
 
@@ -109,7 +114,7 @@ def performance_text(text: str, emotion: Emotion, context: VocalContext | None =
     elif context is not None and context.crowd_mode:
         direction += ", projecting with room-filling authority while keeping the same breath"
     breath = "a constricted breath drags through a failing chest"
-    if emotion in {Emotion.HURT, Emotion.WITHDRAWN}:
+    if emotion in {Emotion.HURT, Emotion.VULNERABLE, Emotion.WITHDRAWN}:
         breath = "a constricted breath trembles through a failing chest"
     elif emotion is Emotion.ANGRY:
         breath = "a harsh, constricted breath drags through a failing chest"

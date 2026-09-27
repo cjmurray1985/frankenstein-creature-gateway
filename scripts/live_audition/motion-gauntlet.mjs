@@ -48,15 +48,17 @@ await page.click('#preview');await page.waitForTimeout(350);
 await page.click('#motion-study');await page.waitForTimeout(500);
 assert.ok(await page.evaluate(()=>document.querySelector('#reference').paused));
 assert.equal(await page.locator('#motion-study').textContent(),'Stop movement study');
-// Exercise the two neck axes through their full study and verify stopping it.
+// Exercise the three PCA-mapped neck axes through their full study and verify stopping it.
 await page.waitForTimeout(5650);
-const lateral=await page.evaluate(()=>({...window.creatureDiagnostics.pose}));assert.ok(Math.abs(lateral.NECK_SIDE)>.25);
-await page.waitForTimeout(4000);
-const pitch=await page.evaluate(()=>({...window.creatureDiagnostics.pose}));assert.ok(Math.abs(pitch.NECK_FB)>.25);
+const rotation=await page.evaluate(()=>({...window.creatureDiagnostics.pose}));assert.ok(Math.abs(rotation.CH2)>.25);
+await page.waitForTimeout(3000);
+const flexion=await page.evaluate(()=>({...window.creatureDiagnostics.pose}));assert.ok(Math.abs(flexion.CH1)>.25);
+await page.waitForTimeout(3000);
+const lateral=await page.evaluate(()=>({...window.creatureDiagnostics.pose}));assert.ok(Math.abs(lateral.CH3)>.25);
 await page.click('#motion-study');await page.waitForTimeout(200);
 assert.equal(await page.locator('#motion-study').textContent(),'Run movement study');
 await page.locator('#creature-stage canvas').screenshot({path:path.join(out,'after-stop.png')});
 const intervals=samples.slice(1).map((s,i)=>s.wall-samples[i].wall).sort((a,b)=>a-b);
-const result={errors,recordingInfo,frameSamples:samples.length,medianFrameMs:intervals[Math.floor(intervals.length/2)],maxMouth:Math.max(...samples.map(s=>s.M1)),minMouth:Math.min(...samples.map(s=>s.M1)),paused,lateral,pitch,samples};
+const result={errors,recordingInfo,frameSamples:samples.length,medianFrameMs:intervals[Math.floor(intervals.length/2)],maxMouth:Math.max(...samples.map(s=>s.M1)),minMouth:Math.min(...samples.map(s=>s.M1)),paused,rotation,flexion,lateral,samples};
 await fs.writeFile(path.join(out,'results.json'),JSON.stringify(result,null,2));
 await browser.close();assert.equal(errors.length,0);console.log(JSON.stringify({...result,samples:undefined}));

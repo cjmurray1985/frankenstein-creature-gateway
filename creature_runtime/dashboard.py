@@ -43,9 +43,14 @@ h1 { max-width:11ch; margin:14px 0 12px; font-size:clamp(2.7rem,13vw,5.3rem); fo
 .emotion-badge { font-size:10px; line-height:1; letter-spacing:.11em; }
 .emotion-hopeful { color:#a9bd7c; }
 .emotion-engaged,.emotion-curious { color:#80b7ba; }
+.emotion-attentive { color:#91c6c0; }
 .emotion-wary { color:#d0a55f; }
+.emotion-suspicious { color:#c08c54; }
+.emotion-startled { color:#d9b56b; }
 .emotion-hurt { color:#c78d91; }
+.emotion-vulnerable { color:#b98da5; }
 .emotion-angry { color:#db756a; }
+.emotion-relieved { color:#9ebc86; }
 .emotion-withdrawn { color:#aaa6bd; }
 .emotion-neutral { color:#aaa398; }
 .still { display:block; width:100%; height:auto; margin:0 0 34px; border:1px solid var(--rule); }
@@ -72,7 +77,7 @@ def _head(title: str) -> str:
 
 
 def _emotion_class(value: str) -> str:
-    known = {"hopeful", "engaged", "curious", "wary", "hurt", "angry", "withdrawn"}
+    known = {"hopeful", "engaged", "curious", "attentive", "wary", "suspicious", "startled", "hurt", "vulnerable", "angry", "relieved", "withdrawn"}
     return value if value in known else "neutral"
 
 

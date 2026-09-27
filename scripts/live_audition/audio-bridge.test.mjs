@@ -10,7 +10,7 @@ function page(){
   const calls=[],elements=new Map(),sources=[],events=new Map();
   function element(id){
     if(!elements.has(id))elements.set(id,{
-      value:id==='#mode'?'elevenlabs':'',disabled:false,style:{},textContent:'',
+      value:id==='#mode'?'elevenlabs':id==='#voice'?'vesper':id==='#style-preset'?'restrained':'',disabled:false,style:{},textContent:'',innerHTML:'',
       addEventListener(){},pause(){},removeAttribute(){},load(){},
     });
     return elements.get(id);
@@ -182,4 +182,16 @@ test('speech starts after four complete words, with larger continuation batches'
   assert.equal(socket.sent.length,1);
   p.run("appendSpeech('of the forest.');finishSpeech();");
   assert.equal(socket.sent.filter(m=>m.text).map(m=>m.text).join(''),'I remember the cold mountains and the silence of the forest.');
+});
+
+test('smooth ElevenLabs stream waits for a sentence and prebuffers playback',()=>{
+  const p=page();p.element('#mode').value='elevenlabs_smooth';
+  p.run("appendSpeech('I remember the cold mountains and the silence ');");
+  assert.equal(p.Socket.last,undefined);
+  p.run("appendSpeech('of the forest. ');");
+  const socket=p.Socket.last;assert.ok(socket);socket.open();
+  assert.equal(socket.sent[0].mode,'elevenlabs_smooth');
+  assert.equal(socket.sent[0].text,'I remember the cold mountains and the silence of the forest. ');
+  p.run('playPcm(new Int16Array(4410).buffer,1)');
+  assert.equal(p.calls.find(c=>c[0]==='start')[1],2.22);
 });

@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {AudioMotion,MechanicalPose,audioEnvelope,RIG,DIRECTIONS,ENCOUNTER_STAGE,entrancePose} from './motion-core.mjs';
+import {AudioMotion,MechanicalPose,audioEnvelope,RIG,HEAD_CHANNELS,AUX_SIGNALS,DIRECTIONS,EMOTION_PROFILES,CUES,ENCOUNTER_STAGE,entrancePose} from './motion-core.mjs';
+
+test('head-channel table maps confirmed PCA outputs and shared bolt signal',()=>{
+  assert.deepEqual(Object.fromEntries(Object.entries(HEAD_CHANNELS).map(([id,value])=>[id,value.pca])),{
+    CH1:'PWM5',CH2:'PWM6',CH3:'PWM7',CH4:'PWM0',CH5:'PWM1',CH6:'PWM2',CH7:'PWM3',CH8:'PWM4',
+  });
+  for(const id of Object.keys(HEAD_CHANNELS))assert.equal(HEAD_CHANNELS[id].confirmed,true);
+  assert.equal(AUX_SIGNALS.LED_BOLTS.confirmed,true);
+});
 
 test('jaw follows PCM energy, with silence closed and loud input bounded',()=>{
   assert.equal(audioEnvelope(new Float32Array(441))[0].open,0);
@@ -61,11 +69,95 @@ test('emotion controls supported gaze and lid axes',()=>{
   assert.equal(p.CH8,DIRECTIONS.withdrawn.lids);
 });
 
+test('emotion profiles produce distinct, bounded body language',()=>{
+  const settled={};
+  for(const emotion of Object.keys(EMOTION_PROFILES)){
+    const pose=new MechanicalPose();let p;
+    for(let i=0;i<360;i++)p=pose.step({open:0,speaking:false},emotion,1/60);
+    settled[emotion]=[p.CH1,p.CH2,p.CH3,p.CH4,p.CH6,p.CH8,p.LED_BOLTS];
+    for(const id of Object.keys(RIG))assert.ok(p[id]>=-1&&p[id]<=1,`${emotion} ${id} out of range`);
+  }
+  assert.notDeepEqual(settled.curious,settled.hopeful);
+  assert.notDeepEqual(settled.hopeful,settled.wary);
+  assert.notDeepEqual(settled.hurt,settled.withdrawn);
+  assert.ok(settled.hopeful.at(-1)>settled.curious.at(-1));
+  assert.ok(settled.angry.at(-1)>settled.wary.at(-1));
+});
+
+test('readable states add sustained semantics without breaking paired attention',()=>{
+  const attentive=new MechanicalPose(),suspicious=new MechanicalPose();
+  let a,s;
+  for(let i=0;i<180;i++){
+    a=attentive.step({open:0,speaking:false},'attentive',1/60);
+    s=suspicious.step({open:0,speaking:false},'suspicious',1/60);
+  }
+  assert.equal(a.CH4,a.CH5);
+  assert.equal(a.CH6,a.CH7);
+  assert.ok(Math.abs(s.CH6-s.CH7)>.04,'suspicion should read as a side-eye');
+  assert.ok(s.CH8>a.CH8,'suspicion should narrow the lids');
+  assert.ok(Math.abs(s.CH2)>Math.abs(a.CH2),'suspicion should turn the head');
+});
+
+test('expressive mode amplifies emotion and cues without leaving normalized bounds',()=>{
+  const restrained=new MechanicalPose(),expressive=new MechanicalPose();
+  expressive.setExpressive(true);restrained.setCue('disagree');expressive.setCue('disagree');
+  let quiet,emphatic;
+  for(let i=0;i<120;i++){
+    quiet=restrained.step({open:0,speaking:false},'wary',1/60);
+    emphatic=expressive.step({open:0,speaking:false},'wary',1/60);
+    for(const id of Object.keys(RIG))assert.ok(emphatic[id]>=-1&&emphatic[id]<=1,`${id} out of range`);
+  }
+  assert.ok(Math.abs(emphatic.CH6)>Math.abs(quiet.CH6));
+  assert.ok(Math.abs(emphatic.CH1)>Math.abs(quiet.CH1));
+  assert.ok(emphatic.CH8>quiet.CH8);
+  const engaged=new MechanicalPose();engaged.setExpressive(true);let minScan=Infinity,maxScan=-Infinity;
+  for(let i=0;i<240;i++){const frame=engaged.step({open:0,speaking:true},'engaged',1/60);minScan=Math.min(minScan,frame.CH6);maxScan=Math.max(maxScan,frame.CH6);}
+  assert.ok(maxScan-minScan>.06,'engaged gaze should visibly scan side to side');
+  assert.ok(engaged.lids>DIRECTIONS.curious.lids,'engaged eyelids should narrow');
+  expressive.setExpressive(false);
+  const restored=new MechanicalPose();
+  for(let i=0;i<120;i++){expressive.step({open:0,speaking:false},'wary',1/60);restored.step({open:0,speaking:false},'wary',1/60);}
+  assert.deepEqual(expressive.step({open:0,speaking:false},'wary',1/60),restored.step({open:0,speaking:false},'wary',1/60));
+});
+
+test('speech emphasis is phrase-level rather than syllable-level',()=>{
+  const pose=new MechanicalPose();
+  pose.step({open:0,speaking:false},'angry',1/60);
+  let first=pose.step({open:.8,rms:.2,speaking:true},'angry',1/60);
+  assert.ok(pose.accent>.9);
+  const accentAtStart=pose.accent;
+  for(let i=0;i<8;i++)pose.step({open:.8,rms:.2,speaking:true},'angry',1/60);
+  assert.ok(pose.accent<accentAtStart);
+  const held=pose.accent;
+  for(let i=0;i<8;i++)pose.step({open:.8,rms:.2,speaking:true},'angry',1/60);
+  assert.ok(pose.accent<=held);
+  assert.ok(first.M1>0&&first.LED_BOLTS>=0&&first.LED_BOLTS<=1);
+});
+
+test('semantic cues create bounded gestures and then expire',()=>{
+  const pose=new MechanicalPose();
+  const signatures={};
+  for(const cue of Object.keys(CUES)){
+    pose.reset();pose.setCue(cue);let minY=Infinity,maxY=-Infinity,minRot=Infinity,maxRot=-Infinity,minFlex=Infinity,maxFlex=-Infinity;
+    for(let i=0;i<90;i++){
+      const p=pose.step({open:0,rms:0,speaking:false},'curious',1/60);
+      minY=Math.min(minY,p.CH4);maxY=Math.max(maxY,p.CH4);minRot=Math.min(minRot,p.CH2);maxRot=Math.max(maxRot,p.CH2);
+      minFlex=Math.min(minFlex,p.CH1);maxFlex=Math.max(maxFlex,p.CH1);
+      for(const id of Object.keys(RIG))assert.ok(p[id]>=-1&&p[id]<=1,`${cue} ${id} out of range`);
+    }
+    signatures[cue]=[minY,maxY,minRot,maxRot,minFlex,maxFlex];
+  }
+  assert.ok(signatures.think[1]>signatures.none[1]);
+  assert.ok(signatures.disagree[2]<signatures.disagree[3]);
+  assert.ok(signatures.agree[4]<signatures.agree[5]);
+  assert.equal(pose.cueName,'none');
+});
+
 test('returning from withdrawal to curious settles at straight-ahead gaze and head pose',()=>{
   const pose=new MechanicalPose();let p;
   for(let i=0;i<180;i++)pose.step({open:0},'withdrawn',1/60);
   for(let i=0;i<180;i++)p=pose.step({open:0},'curious',1/60);
-  for(const channel of ['CH4','CH5','CH6','CH7','NECK_SIDE','NECK_FB'])assert.equal(p[channel],0);
+  for(const channel of ['CH1','CH2','CH3','CH4','CH5','CH6','CH7','LED_BOLTS'])assert.equal(p[channel],0);
 });
 
 test('linked eyelids can close fully and reopen without disturbing gaze or mouth',()=>{

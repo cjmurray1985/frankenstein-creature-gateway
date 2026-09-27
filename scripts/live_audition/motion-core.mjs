@@ -1,24 +1,71 @@
 // Normalized preview travel only: these values MUST NOT be converted to PWM.
-// CH4–CH8 assignments and M1 mouth motor come from the preserved Phase 2 wiring record.
+// Head-channel identities come from Christopher's confirmed PCA table. These
+// normalized values are browser-only actuator simulations, never PWM commands.
+export const HEAD_CHANNELS = Object.freeze({
+  CH1: {pca:'PWM5', role:'Neck flexion/extension', confirmed:true},
+  CH2: {pca:'PWM6', role:'Neck rotation', confirmed:true},
+  CH3: {pca:'PWM7', role:'Neck lateral flexion', confirmed:true},
+  CH4: {pca:'PWM0', role:'Right eye vertical · up/down', confirmed:true},
+  CH5: {pca:'PWM1', role:'Left eye vertical · up/down', confirmed:true},
+  CH6: {pca:'PWM2', role:'Left eye horizontal · left/right', confirmed:true},
+  CH7: {pca:'PWM3', role:'Right eye horizontal · left/right', confirmed:true},
+  CH8: {pca:'PWM4', role:'Linked eyelids · open/close', confirmed:true},
+});
+export const AUX_SIGNALS = Object.freeze({
+  LED_BOLTS: {role:'Left/right neck-bolt LEDs · shared signal', confirmed:true},
+});
 export const RIG = Object.freeze({
-  CH4: {label:'Right eye · vertical', evidence:'identified; electrical envelope measured'},
-  CH5: {label:'Left eye · vertical', evidence:'identified; travel uncalibrated'},
-  CH6: {label:'Left eye · horizontal', evidence:'identified; travel uncalibrated'},
-  CH7: {label:'Right eye · horizontal', evidence:'identified; travel uncalibrated'},
-  CH8: {label:'Coupled eyelids', evidence:'identified; travel uncalibrated'},
+  CH1: {label:HEAD_CHANNELS.CH1.role, evidence:'confirmed mechanism; travel uncalibrated'},
+  CH2: {label:HEAD_CHANNELS.CH2.role, evidence:'confirmed mechanism; travel uncalibrated'},
+  CH3: {label:HEAD_CHANNELS.CH3.role, evidence:'confirmed mechanism; travel uncalibrated'},
+  CH4: {label:HEAD_CHANNELS.CH4.role, evidence:'identified; electrical envelope measured'},
+  CH5: {label:HEAD_CHANNELS.CH5.role, evidence:'identified; travel uncalibrated'},
+  CH6: {label:HEAD_CHANNELS.CH6.role, evidence:'identified; travel uncalibrated'},
+  CH7: {label:HEAD_CHANNELS.CH7.role, evidence:'identified; travel uncalibrated'},
+  CH8: {label:HEAD_CHANNELS.CH8.role, evidence:'identified; travel uncalibrated'},
   M1: {label:'Mouth opening', evidence:'continuous face skin; motor linkage, no detached chin'},
-  NECK_SIDE: {label:'Neck · side to side', evidence:'user-confirmed and visible in full-cycle video; channel assignment unresolved'},
-  NECK_FB: {label:'Neck · front/back', evidence:'user-confirmed and visible in full-cycle video; channel assignment unresolved'},
+  LED_BOLTS: {label:AUX_SIGNALS.LED_BOLTS.role, evidence:'left/right neck bolts share one signal; source channel not specified'},
 });
 export const DIRECTIONS = Object.freeze({
-  dormant:{gazeX:0,gazeY:-.25,lids:.82},
-  curious:{gazeX:0,gazeY:0,lids:.58},
-  hopeful:{gazeX:0,gazeY:.12,lids:.50},
-  engaged:{gazeX:0,gazeY:.05,lids:.55},
-  wary:{gazeX:.12,gazeY:-.02,lids:.73},
-  hurt:{gazeX:-.22,gazeY:-.25,lids:.70},
-  angry:{gazeX:0,gazeY:.02,lids:.77},
-  withdrawn:{gazeX:-.35,gazeY:-.32,lids:.80},
+  // These are expressive targets, not hardware calibration values. The
+  // small asymmetries and accent terms keep an emotion readable without
+  // turning every spoken syllable into a servo gesture.
+  dormant:{gazeX:0,gazeY:-.25,lids:.82,neckFlex:.22,neckRotation:0,neckLateral:0,led:0,jaw:0.86,gazeRate:.42,neckRate:.13,accentFlex:0,accentRotation:0,accentLateral:0,sway:.004,ledPulse:0},
+  curious:{gazeX:0,gazeY:0,lids:.50,neckFlex:0,neckRotation:0,neckLateral:0,led:0,jaw:1,gazeRate:.68,neckRate:.22,accentFlex:-.018,accentRotation:.012,accentLateral:.006,sway:.009,ledPulse:0,eyeAsymX:0,eyeAsymY:0},
+  // Attention is deliberately still: a direct, held gaze reads at distance
+  // better than constant motion and gives the later cues somewhere to land.
+  attentive:{gazeX:0,gazeY:.035,lids:.60,neckFlex:-.035,neckRotation:0,neckLateral:0,led:.12,jaw:1.01,gazeRate:.62,neckRate:.18,accentFlex:-.028,accentRotation:.018,accentLateral:.008,sway:.004,ledPulse:.04,eyeAsymX:0,eyeAsymY:0},
+  hopeful:{gazeX:0,gazeY:.14,lids:.43,neckFlex:-.14,neckRotation:0,neckLateral:0,led:.28,jaw:1.02,gazeRate:.62,neckRate:.19,accentFlex:-.035,accentRotation:.025,accentLateral:.012,sway:.014,ledPulse:.10},
+  // Engagement is direct attention: lids narrow, the head leans in, and the
+  // eyes make a slow human scan instead of freezing on one point.
+  engaged:{gazeX:.03,gazeY:.06,lids:.72,neckFlex:-.08,neckRotation:.05,neckLateral:.025,led:.38,jaw:1.04,gazeRate:.75,neckRate:.24,accentFlex:-.055,accentRotation:.035,accentLateral:.018,sway:.014,ledPulse:.12},
+  wary:{gazeX:.18,gazeY:-.06,lids:.78,neckFlex:.12,neckRotation:.04,neckLateral:-.07,led:.08,jaw:.94,gazeRate:.72,neckRate:.17,accentFlex:.018,accentRotation:.045,accentLateral:-.018,sway:.006,ledPulse:.035,eyeAsymX:0,eyeAsymY:0},
+  // Suspicion leads with a side-eye and holds it. A small inter-eye offset is
+  // intentional here; ordinary attention keeps the two eyes paired.
+  suspicious:{gazeX:.28,gazeY:-.035,lids:.84,neckFlex:.16,neckRotation:.10,neckLateral:-.10,led:.06,jaw:.91,gazeRate:.78,neckRate:.15,accentFlex:.02,accentRotation:.06,accentLateral:-.025,sway:.002,ledPulse:.02,eyeAsymX:.045,eyeAsymY:.016},
+  startled:{gazeX:0,gazeY:.12,lids:.18,neckFlex:-.18,neckRotation:-.025,neckLateral:0,led:.72,jaw:1.05,gazeRate:1.35,neckRate:.48,accentFlex:-.10,accentRotation:.02,accentLateral:0,sway:.012,ledPulse:.24,eyeAsymX:.025,eyeAsymY:.018},
+  hurt:{gazeX:-.22,gazeY:-.25,lids:.70,neckFlex:.23,neckRotation:0,neckLateral:.08,led:.03,jaw:.92,gazeRate:.46,neckRate:.14,accentFlex:.012,accentRotation:-.018,accentLateral:.012,sway:.004,ledPulse:.015,eyeAsymX:0,eyeAsymY:0},
+  vulnerable:{gazeX:-.08,gazeY:.22,lids:.54,neckFlex:-.12,neckRotation:-.035,neckLateral:.09,led:.10,jaw:.96,gazeRate:.42,neckRate:.13,accentFlex:-.02,accentRotation:-.025,accentLateral:.02,sway:.003,ledPulse:.025,eyeAsymX:0,eyeAsymY:0},
+  angry:{gazeX:0,gazeY:.02,lids:.77,neckFlex:-.10,neckRotation:0,neckLateral:0,led:.58,jaw:1.08,gazeRate:1.05,neckRate:.30,accentFlex:-.09,accentRotation:.055,accentLateral:.025,sway:.003,ledPulse:.18,eyeAsymX:0,eyeAsymY:0},
+  relieved:{gazeX:0,gazeY:.03,lids:.46,neckFlex:-.035,neckRotation:-.02,neckLateral:0,led:.20,jaw:1.01,gazeRate:.36,neckRate:.14,accentFlex:-.02,accentRotation:-.012,accentLateral:0,sway:.008,ledPulse:.06,eyeAsymX:0,eyeAsymY:0},
+  withdrawn:{gazeX:-.35,gazeY:-.32,lids:.80,neckFlex:.32,neckRotation:0,neckLateral:.12,led:0,jaw:.82,gazeRate:.34,neckRate:.11,accentFlex:.004,accentRotation:-.012,accentLateral:.006,sway:0,ledPulse:0,eyeAsymX:0,eyeAsymY:0},
+});
+export const EMOTION_PROFILES=DIRECTIONS;
+export const CUES=Object.freeze({
+  none:{duration:0},
+  // Momentary conversational gestures. Values are normalized preview
+  // offsets, not calibrated servo travel or PWM.
+  think:{duration:1.40,gazeY:.20,flex:-.045,lateral:.025,lids:-.06},
+  agree:{duration:1.25,nod:.13,flex:-.02,lids:-.035},
+  disagree:{duration:1.40,shake:.14,lateral:.012,lids:.035},
+  listening:{duration:1.45,gazeY:.035,flex:-.065,lids:-.025},
+  surprise:{duration:1.00,gazeY:.12,flex:-.11,lids:-.38,led:.16},
+  startle:{duration:1.00,gazeY:.12,flex:-.11,lids:-.38,led:.26},
+  suspicion:{duration:1.40,gazeX:.16,rotation:.10,lateral:-.045,lids:.08},
+  repair:{duration:1.35,nod:.10,flex:-.018,lids:-.04,gazeY:.035},
+  plead:{duration:1.45,gazeY:.13,flex:-.06,lateral:.035,lids:-.06,led:.05},
+  relief:{duration:1.35,nod:.09,flex:-.025,lids:-.05,gazeY:.02,led:.08},
+  withdraw:{duration:1.45,gazeX:.16,rotation:.18,flex:.06,lids:.10},
 });
 export const clamp = (v,lo=0,hi=1)=>Math.max(lo,Math.min(hi,v));
 // Cinematic staging assumptions, not dimensions measured from the KIRI scan.
@@ -75,22 +122,58 @@ export class AudioMotion {
 }
 export class MechanicalPose {
   constructor(){this.reset();}
-  reset(){this.jaw=0;this.x=0;this.y=0;this.lids=DIRECTIONS.curious.lids;this.neckSide=0;this.neckForward=0;this.silence=10;this.speechAge=10;}
+  reset(){const expressive=this.expressive===true;this.jaw=0;this.x=0;this.y=0;this.lids=DIRECTIONS.curious.lids;this.neckFlex=0;this.neckRotation=0;this.neckLateral=0;this.silence=10;this.speechAge=10;this.speakingAge=10;this.wasSpeaking=false;this.emotionAge=10;this.emotionName='curious';this.cueName='none';this.cueAge=999;this.lastOpen=0;this.lastAccent=-10;this.accent=0;this.clock=0;this.expressive=expressive;}
+  setExpressive(value){this.expressive=Boolean(value);}
+  setCue(value){if(value&&CUES[value]&&value!==this.cueName){this.cueName=value;this.cueAge=0;}}
   step(input,emotion,dt,blink=0){
     dt=clamp(dt,0,.05);
     const d=DIRECTIONS[emotion]||DIRECTIONS.curious;
+    if(input.cue)this.setCue(input.cue);
+    const cue=CUES[this.cueName]||CUES.none;
+    if(cue.duration){this.cueAge+=dt;if(this.cueAge>=cue.duration){this.cueName='none';this.cueAge=999;}}
+    const cueActive=cue.duration&&this.cueAge<cue.duration;
+    const cueT=cueActive?this.cueAge/cue.duration:0;
+    const cueEnvelope=cueActive?Math.sin(Math.PI*cueT):0;
+    const cueOscillation=cueActive?Math.sin(Math.PI*2*(cue.nod?1.0:cue.shake?.85:1)*cueT)*cueEnvelope:0;
+    if(emotion!==this.emotionName){this.emotionName=emotion;this.emotionAge=0;}
+    this.clock+=dt;this.emotionAge+=dt;
+    const open=clamp(Number(input.open)||0),speaking=Boolean(input.speaking),rms=Number(input.rms)||0;
+    if(speaking){if(!this.wasSpeaking||this.silence>.6){this.speechAge=0;this.speakingAge=0;}this.silence=0;this.speakingAge+=dt;}else{this.silence+=dt;this.speakingAge=10;}
+    this.wasSpeaking=speaking;
+    // One restrained physical emphasis per breath-sized phrase. The trigger
+    // is deliberately based on the audio envelope's rising edge, not every
+    // frame, so the neck never becomes a syllable-by-syllable metronome.
+    if(speaking&&rms>.075&&open>.48&&this.lastOpen<=.48&&this.clock-this.lastAccent>.72){this.accent=1;this.lastAccent=this.clock;}
+    this.accent=approach(this.accent,0,2.6,dt);this.lastOpen=open;
     // Provisional visual slew limits, deliberately unrelated to unmeasured hardware speed.
-    this.jaw=approach(this.jaw,clamp(input.open||0),input.open>this.jaw?5:7,dt);
-    this.x=approach(this.x,d.gazeX,.65,dt);
-    this.y=approach(this.y,d.gazeY,.5,dt);
-    this.lids=approach(this.lids,Math.max(d.lids,blink),blink?8:2.8,dt);
-    const forward={dormant:.22,curious:0,hopeful:-.12,engaged:-.04,wary:.10,hurt:.23,angry:-.1,withdrawn:.32}[emotion]||0;
-    if(input.speaking){if(this.silence>.6)this.speechAge=0;this.silence=0;}else this.silence+=dt;
+    // Expressive mode exaggerates semantic motion around the curious baseline,
+    // keeping the same normalized bounds while making emotion legible at a
+    // glance. Audio-driven jaw motion remains unchanged.
+    const emotionGain=this.expressive?1.7:1;
+    const cueGain=this.expressive?1.85:1;
+    const swayGain=this.expressive?1.45:1;
+    const scanRate=emotion==='engaged'?1.15:emotion==='attentive'?.32:emotion==='curious'?.72:emotion==='wary'?1.45:emotion==='suspicious'?.28:emotion==='hopeful'?.55:0;
+    const scanAmount=this.expressive?(emotion==='engaged'?.12:emotion==='attentive'?.018:emotion==='curious'?.055:emotion==='wary'?.045:emotion==='suspicious'?.012:emotion==='hopeful'?.025:0):0;
+    const socialScan=scanAmount?Math.sin(this.clock*scanRate)*scanAmount:0;
+    const gazeX=d.gazeX*emotionGain+socialScan+(cue.gazeX||0)*cueGain*cueEnvelope;
+    const gazeY=d.gazeY*emotionGain+(emotion==='engaged'&&this.expressive?Math.sin(this.clock*.63)*.022:0)+(cue.gazeY||0)*cueGain*cueEnvelope;
+    const lidTarget=clamp(DIRECTIONS.curious.lids+(d.lids-DIRECTIONS.curious.lids)*emotionGain+(cue.lids||0)*cueGain*cueEnvelope,0,1);
+    this.jaw=approach(this.jaw,clamp(open*d.jaw),open*d.jaw>this.jaw?5:7,dt);
+    this.x=approach(this.x,gazeX,d.gazeRate,dt);
+    this.y=approach(this.y,gazeY,d.gazeRate*.78,dt);
+    this.lids=approach(this.lids,Math.max(lidTarget,blink),blink?8:2.8,dt);
+    const breathSway=speaking?Math.sin(this.speakingAge*2.1)*d.sway*swayGain:0;
     this.speechAge+=dt;
     const nod=this.speechAge<1.4?Math.sin(this.speechAge/1.4*Math.PI)*.10:0;
     // Gaze acquires first; the neck follows with slower, restrained movement.
-    this.neckSide=approach(this.neckSide,this.x,.22,dt);
-    this.neckForward=approach(this.neckForward,forward+nod,.20,dt);
-    return {CH4:this.y,CH5:this.y,CH6:this.x,CH7:this.x,CH8:this.lids,M1:this.jaw,NECK_SIDE:this.neckSide,NECK_FB:this.neckForward};
+    const flexTarget=d.neckFlex*emotionGain+nod+breathSway+d.accentFlex*this.accent*emotionGain+(cue.flex||0)*cueGain*cueEnvelope+(cue.nod||0)*cueGain*cueOscillation;
+    const rotationTarget=this.x+d.neckRotation*emotionGain+breathSway*.35+d.accentRotation*this.accent*emotionGain+(cue.rotation||0)*cueGain*cueEnvelope+(cue.shake||0)*cueGain*cueOscillation;
+    const lateralTarget=d.neckLateral*emotionGain+breathSway*.55+d.accentLateral*this.accent*emotionGain+(cue.lateral||0)*cueGain*cueEnvelope;
+    this.neckRotation=approach(this.neckRotation,rotationTarget,d.neckRate,dt);
+    this.neckFlex=approach(this.neckFlex,flexTarget,d.neckRate,dt);
+    this.neckLateral=approach(this.neckLateral,lateralTarget,d.neckRate,dt);
+    const ledPulse=speaking?d.ledPulse*(.5+.5*Math.sin(this.clock*2.2))*emotionGain:0;
+    const eyeAsymX=(d.eyeAsymX||0)*emotionGain,eyeAsymY=(d.eyeAsymY||0)*emotionGain;
+    return {CH1:clamp(this.neckFlex,-1,1),CH2:clamp(this.neckRotation,-1,1),CH3:clamp(this.neckLateral,-1,1),CH4:clamp(this.y+eyeAsymY,-1,1),CH5:clamp(this.y-eyeAsymY,-1,1),CH6:clamp(this.x-eyeAsymX,-1,1),CH7:clamp(this.x+eyeAsymX,-1,1),CH8:clamp(this.lids),M1:this.jaw,LED_BOLTS:clamp(d.led*emotionGain+ledPulse+(cue.led||0)*cueGain*cueEnvelope)};
   }
 }
