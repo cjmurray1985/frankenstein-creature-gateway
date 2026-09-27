@@ -262,8 +262,8 @@ class Gateway:
                 return web.json_response({'error':'Invalid family session configuration.'}, status=400)
             # Versioned keys prevent an obsolete, tighter quota from continuing
             # to block the family after a limit-policy deployment.
-            if not self.store.reserve([('sessions:v2:hour',12,3600), ('sessions:v2:day',60,86400)]):
-                return web.json_response({'error':'The family encounter limit has been reached. Please return later.'}, status=429)
+            if not self.store.reserve([('sessions:v3:hour',12,3600), ('sessions:v3:day',60,86400)]):
+                return web.json_response({'error':'The family encounter limit has been reached. Please return later.', 'code':'family_session_limit'}, status=429)
             await self.backend_token()
             code, data, _ = await self.upstream_request('POST', '/session', {'token':self.token,'voice':'vesper','style':style,'mode':mode,'sdp':body['sdp']})
             if code != 201:
