@@ -261,7 +261,22 @@ class Gateway:
             await self.backend_token()
             code, data, _ = await self.upstream_request('POST', '/session', {'token':self.token,'voice':'vesper','sdp':body['sdp']})
             if code != 201:
-                return web.json_response({'error':'The Creature is unavailable. Please try again shortly.'}, status=503)
+                provider_code = None
+                try:
+                    provider_error = json.loads(data).get('error', {})
+                    if isinstance(provider_error, dict):
+                        provider_code = provider_error.get('code')
+                except (TypeError, ValueError):
+                    pass
+                if code in (401, 403):
+                    message = 'The hosted voice service rejected its Live credentials or access.'
+                elif code == 429:
+                    message = 'The hosted voice service has exhausted its credits or rate limit.'
+                elif code == 400:
+                    message = 'The hosted Live session offer was rejected.'
+                else:
+                    message = 'The hosted voice service is temporarily unavailable.'
+                return web.json_response({'error':message,'provider_status':code,'provider_code':provider_code}, status=503)
             answer = json.loads(data)['transport']['sdp']
             if not isinstance(answer, str) or not answer.startswith('v=0'):
                 raise ValueError('Upstream returned an invalid WebRTC answer')
