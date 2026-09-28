@@ -1,0 +1,33 @@
+name: Deployment checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployment-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Tests and container build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run browser-side unit tests
+        run: node --test scripts/live_audition/*.test.mjs
+      - name: Compile Python sources
+        run: python -m compileall -q creature_runtime scripts/family_encounter scripts/live_audition
+      - name: Build deployment container
+        run: docker build --file scripts/family_encounter/Dockerfile --tag creature-family-encounter:ci .
