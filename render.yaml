@@ -6,6 +6,11 @@ services:
     plan: starter
     dockerfilePath: ./scripts/family_encounter/Dockerfile
     healthCheckPath: /healthz
+    autoDeployTrigger: checksPass
+    previews:
+      generation: manual
+      plan: starter
+      numInstances: 1
     numInstances: 1
     disk:
       name: family-access-state
@@ -20,3 +25,7 @@ services:
         sync: false
       - key: PUBLIC_ORIGIN
         sync: false
+
+previews:
+  generation: manual
+  expireAfterDays: 3

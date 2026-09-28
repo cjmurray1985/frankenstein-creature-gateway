@@ -387,7 +387,9 @@ class Gateway:
 
 def main():
     state = Path(os.environ.get('STATE_DIR', '/var/lib/creature'))
-    origin = os.environ['PUBLIC_ORIGIN'].rstrip('/')
+    origin = (os.environ.get('PUBLIC_ORIGIN') or os.environ.get('RENDER_EXTERNAL_URL', '')).rstrip('/')
+    if not origin:
+        raise RuntimeError('PUBLIC_ORIGIN or RENDER_EXTERNAL_URL is required')
     encoded = os.environ.get('FAMILY_PASSWORD_HASH')
     if not encoded:
         encoded = Path(os.environ['FAMILY_PASSWORD_HASH_FILE']).read_text().strip()

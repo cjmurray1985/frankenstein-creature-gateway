@@ -20,9 +20,11 @@ def stop(*_):
             child.kill()
 
 try:
-    for name in ('OPENAI_API_KEY', 'ELEVENLABS_API_KEY', 'PUBLIC_ORIGIN'):
+    for name in ('OPENAI_API_KEY', 'ELEVENLABS_API_KEY'):
         if not os.environ.get(name):
             raise RuntimeError(f'Missing required runtime secret/configuration: {name}')
+    if not (os.environ.get('PUBLIC_ORIGIN') or os.environ.get('RENDER_EXTERNAL_URL')):
+        raise RuntimeError('Missing required runtime configuration: PUBLIC_ORIGIN')
     os.environ.setdefault('AUDITION_MAX_SESSIONS', '60')
     os.environ.setdefault('AUDITION_WINDOW_SECONDS', '86400')
     os.environ.setdefault('AUDITION_SESSION_SECONDS', '1200')
