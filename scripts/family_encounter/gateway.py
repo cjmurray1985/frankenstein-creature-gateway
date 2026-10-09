@@ -140,6 +140,7 @@ class Gateway:
         self.client = None
         self.upgraded = None
         self.is_upgraded = False
+        self.other_edition = None
         self.owner = None
         self.until = 0
         self.token = None
@@ -315,6 +316,8 @@ class Gateway:
                 return web.json_response({'stopping':True})
             if request.path != '/session':
                 return web.Response(status=404)
+            if self.other_edition and self.other_edition.owner and time.monotonic() < self.other_edition.until:
+                return web.json_response({'error':'The Creature is speaking with another visitor. Try again shortly.'}, status=409)
             if self.owner and time.monotonic() < self.until:
                 return web.json_response({'error':'The Creature is speaking with another visitor. Try again shortly.'}, status=409)
             style = body.get('style', 'labored')
@@ -439,6 +442,9 @@ def main():
     if upgraded_hash:
         gateway.upgraded = Gateway(origin, upgraded_hash, gateway.store, upstream='http://localhost:8807', speech='ws://127.0.0.1:8808')
         gateway.upgraded.is_upgraded = True
+        gateway.upgraded.lock = gateway.lock
+        gateway.upgraded.other_edition = gateway
+        gateway.other_edition = gateway.upgraded
     # Loopback for local previews; hosting explicitly opts into 0.0.0.0.
     web.run_app(gateway.app, host=os.environ.get('GATEWAY_BIND','127.0.0.1'), port=int(os.environ.get('PORT','8772')), access_log=None)
 
