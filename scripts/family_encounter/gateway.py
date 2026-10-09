@@ -13,6 +13,7 @@ import re
 import secrets
 import sqlite3
 import time
+import uuid
 from urllib.parse import urlsplit
 from aiohttp import ClientSession, ClientTimeout, WSMsgType, web
 
@@ -28,6 +29,7 @@ SECURITY = {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
             'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
             'Permissions-Policy': 'microphone=(self), camera=(), geolocation=()',
             'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"}
+UPGRADED_STATIC = {'/visitor-scenarios.json', '/emotion-rehearsal.mjs', '/rehearsal-records.mjs', '/twin-fit.mjs', '/visitor-lab.mjs', '/vision-gaze.mjs', '/attention-motion.mjs', '/performance-arbiter.mjs', '/memory-scenarios.json', '/visitor-scenarios.mjs', '/servo-profile.mjs'}
 SESSION_SECONDS = 1200
 MAX_REPLY_STREAMS = 60
 FAMILY_STYLES = frozenset(('labored', 'restrained', 'abyssal', 'shelleyan', 'shelleyan_clear'))
@@ -61,6 +63,7 @@ class Store:
         self.db.executescript('''
             CREATE TABLE IF NOT EXISTS counters (key TEXT PRIMARY KEY, n INTEGER, expiry REAL);
             CREATE TABLE IF NOT EXISTS logins (id TEXT PRIMARY KEY, csrf TEXT, expiry REAL);
+            CREATE TABLE IF NOT EXISTS login_editions (id TEXT PRIMARY KEY, edition TEXT NOT NULL);
         ''')
 
     def reserve(self, limits):
@@ -68,6 +71,7 @@ class Store:
         with self.db:
             self.db.execute('DELETE FROM counters WHERE expiry <= ?', (now,))
             self.db.execute('DELETE FROM logins WHERE expiry <= ?', (now,))
+            self.db.execute('DELETE FROM login_editions WHERE id NOT IN (SELECT id FROM logins)')
             for key, limit, seconds in limits:
                 row = self.db.execute('SELECT n FROM counters WHERE key=?', (key,)).fetchone()
                 if row and row[0] >= limit:
@@ -76,10 +80,11 @@ class Store:
                 self.db.execute('INSERT INTO counters VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET n=n+1', (key, 1, now + seconds))
         return True
 
-    def login(self):
+    def login(self, edition="legacy"):
         token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
         with self.db:
             self.db.execute('INSERT INTO logins VALUES (?,?,?)', (self.digest(token), csrf, time.time()+8*3600))
+            self.db.execute('INSERT INTO login_editions VALUES (?,?)', (self.digest(token), edition))
         return token
 
     @staticmethod
@@ -93,8 +98,13 @@ class Store:
         row = self.db.execute('SELECT csrf,expiry FROM logins WHERE id=?', (sid,)).fetchone()
         return (sid, row[0]) if row and row[1] > time.time() else None
 
+    def edition(self, sid):
+        row = self.db.execute("SELECT edition FROM login_editions WHERE id=?", (sid,)).fetchone()
+        return row[0] if row else "legacy"
+
     def revoke(self, sid):
         with self.db:
+            self.db.execute("DELETE FROM login_editions WHERE id=?", (sid,))
             self.db.execute('DELETE FROM logins WHERE id=?', (sid,))
 
 
@@ -128,6 +138,8 @@ class Gateway:
         self.encoded_password, self.store = encoded_password, store
         self.upstream, self.speech = upstream, speech
         self.client = None
+        self.upgraded = None
+        self.is_upgraded = False
         self.owner = None
         self.until = 0
         self.token = None
@@ -140,6 +152,8 @@ class Gateway:
 
     async def lifecycle(self, app):
         self.client = ClientSession(timeout=ClientTimeout(total=40))
+        if self.upgraded:
+            self.upgraded.client = self.client
         yield
         await self.client.close()
         self.store.db.close()
@@ -151,19 +165,23 @@ class Gateway:
             return web.json_response({'ok': True}, headers=SECURITY)
         if request.host != self.host:
             return web.Response(status=403, headers=SECURITY)
-        if request.method not in ('GET', 'POST') or request.query_string and request.path != '/speech':
+        auth = self.store.session(request.cookies.get(COOKIE))
+        upgraded_status = auth and self.store.edition(auth[0]) == 'upgraded' and request.path == '/status' and request.query_string == 'diagnostics=1'
+        if request.method not in ('GET', 'POST') or request.query_string and request.path != '/speech' and not upgraded_status:
             return web.Response(status=404, headers=SECURITY)
         if request.method == 'POST' or request.path == '/speech':
             if request.headers.get('Origin') != self.origin:
                 return web.Response(status=403, headers=SECURITY)
-        auth = self.store.session(request.cookies.get(COOKIE))
         request['auth'] = auth
         if request.path != '/login' and not auth:
             if request.path == '/' and request.method == 'GET':
                 return web.Response(text=login_page(), content_type='text/html', headers=SECURITY)
             return web.json_response({'error': 'Please sign in.'}, status=401, headers=SECURITY)
         try:
-            response = await handler(request)
+            selected = self.upgraded if auth and self.store.edition(auth[0]) == "upgraded" and request.path != "/login" else self
+            if selected is None:
+                raise web.HTTPServiceUnavailable()
+            response = await selected.handle(request)
         except (ValueError, json.JSONDecodeError):
             response = web.json_response({'error': 'Invalid request.'}, status=400)
         except web.HTTPException as exc:
@@ -179,7 +197,7 @@ class Gateway:
 
     async def upstream_request(self, method, path, body=None):
         async with self.client.request(method, self.upstream+path,
-                headers={'Host': 'localhost:8767', 'Origin': 'http://localhost:8767'}, json=body) as response:
+                headers={'Host': urlsplit(self.upstream).netloc, 'Origin': self.upstream.replace('127.0.0.1', 'localhost')}, json=body) as response:
             return response.status, await response.read(), response.headers.get('Content-Type', 'application/octet-stream')
 
     async def backend_token(self):
@@ -201,9 +219,12 @@ class Gateway:
                 return web.Response(text=login_page('Access attempts are temporarily limited. Please try later.'), content_type='text/html', status=429, headers={'Retry-After':'900'})
             body = await request.post()
             password = body.get('password', '')
-            if not isinstance(password, str) or len(password) > 128 or not await asyncio.to_thread(password_matches, password, self.encoded_password):
+            valid_input = isinstance(password, str) and len(password) <= 128
+            legacy_match = valid_input and await asyncio.to_thread(password_matches, password, self.encoded_password)
+            upgrade_match = valid_input and self.upgraded is not None and await asyncio.to_thread(password_matches, password, self.upgraded.encoded_password)
+            if not (legacy_match or upgrade_match):
                 return web.Response(text=login_page('Password not recognized.'), content_type='text/html', status=401)
-            token = self.store.login()
+            token = self.store.login('legacy' if legacy_match else 'upgraded')
             response = web.Response(status=303, headers={'Location':'/'})
             response.set_cookie(COOKIE, token, max_age=8*3600, httponly=True, secure=self.secure, samesite='Strict', path='/')
             return response
@@ -223,33 +244,55 @@ class Gateway:
                 page = re.sub(r'(<option value="(?:vesper|stone|ripple|meridian|beacon|cinder)") selected', r'\1', page)
                 page = re.sub(r'(<option value="cinder")(?=>)', r'\1 selected', page, count=1)
                 page = page.replace('Ready. Up to twenty minutes per encounter.', 'Ready. Up to twenty minutes per encounter. One visitor at a time.')
+                if self.is_upgraded:
+                    page = re.sub(r'(<meta name="hardware-token" content=")[^"]+(">)', lambda m: m[1]+csrf+m[2], page)
+                    page = page.replace('<title>', '<title>Laboratory edition · ', 1)
                 page = page.replace('</dialog>', '<form method="post" action="/logout"><input type="hidden" name="token" value="'+csrf+'"><button class="secondary">Lock the laboratory</button></form></dialog>')
                 return web.Response(text=page, content_type='text/html')
             if request.path == '/status':
                 if sid != self.owner or time.monotonic() >= self.until:
                     return web.json_response({'active': False, 'stop_requested': True})
-                code, data, _ = await self.upstream_request('GET', '/status')
+                diagnostics = self.is_upgraded and request.query.get('diagnostics') == '1'
+                code, data, _ = await self.upstream_request('GET', '/status?diagnostics=1' if diagnostics else '/status')
                 status = json.loads(data)
                 if not status.get('active'):
                     self.until = 0
                 # Forward only the bounded presentation state needed by the
                 # browser. Keep provider events, transcripts and diagnostics
                 # private to the loopback engine.
-                return web.json_response({
+                response = {
                     'active': bool(status.get('active')),
                     'stop_requested': bool(status.get('stop_requested')),
                     'emotion': status.get('emotion'),
                     'emotion_revision': int(status.get('emotion_revision', 0) or 0),
                     'cue': status.get('cue', 'none'),
                     'cue_revision': int(status.get('cue_revision', 0) or 0),
-                })
-            if request.path in STATIC:
+                }
+                if diagnostics:
+                    raw = status.get('diagnostics') or {}
+                    safe_label = lambda value: value if isinstance(value, str) and re.fullmatch(r'[a-z_-]{1,32}', value) else 'unknown'
+                    response['diagnostics'] = {key:safe_label(raw.get(key)) for key in ('ambient','relationship','familiarity','momentary','cue')}
+                    response['diagnostics']['archive_status'] = 'not_connected'
+                return web.json_response(response)
+            if request.path in STATIC or (self.is_upgraded and request.path in UPGRADED_STATIC):
                 code, body, media = await self.upstream_request('GET', request.path)
                 return web.Response(status=code, body=body, headers={'Content-Type':media})
             return web.Response(status=404)
         body = dict(await request.post()) if request.path == '/logout' else await request.json()
         if not isinstance(body, dict) or not isinstance(body.get('token'), str) or not hmac.compare_digest(body['token'], csrf):
             return web.Response(status=403)
+        if self.is_upgraded and request.path == '/visitor-lab':
+            if not self.store.reserve([('lab:'+sid, 100, 10)]):
+                return web.json_response({'error':'Rehearsal requests are temporarily limited.'}, status=429)
+            lab_session = body.get('lab_session', '')
+            if not isinstance(lab_session, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', lab_session):
+                return web.Response(status=400)
+            forwarded = dict(body)
+            forwarded['lab_session'] = str(uuid.UUID(hex=hashlib.sha256((sid+':'+lab_session).encode()).hexdigest()[:32]))
+            await self.backend_token()
+            forwarded['token'] = self.token
+            code, data, media = await self.upstream_request('POST', '/visitor-lab', forwarded)
+            return web.Response(status=code, body=data, headers={'Content-Type':media})
         async with self.lock:
             if request.path in ('/logout', '/stop'):
                 owned = sid == self.owner
@@ -342,7 +385,7 @@ class Gateway:
             self.replies += 1
             socket = web.WebSocketResponse(max_msg_size=65536, heartbeat=15)
             socket.headers.update(SECURITY)
-            async with self.client.ws_connect(self.speech+'/speech?token='+self.token, origin='http://localhost:8767', max_msg_size=1_000_000) as upstream:
+            async with self.client.ws_connect(self.speech+'/speech?token='+self.token, origin=self.upstream.replace('127.0.0.1', 'localhost'), max_msg_size=1_000_000) as upstream:
                 await socket.prepare(request)
                 async def send():
                     characters = 0
@@ -392,6 +435,10 @@ def main():
     if not encoded:
         encoded = Path(os.environ['FAMILY_PASSWORD_HASH_FILE']).read_text().strip()
     gateway = Gateway(origin, encoded, Store(state/'access.sqlite3'))
+    upgraded_hash = os.environ.get('UPGRADED_PASSWORD_HASH')
+    if upgraded_hash:
+        gateway.upgraded = Gateway(origin, upgraded_hash, gateway.store, upstream='http://localhost:8807', speech='ws://127.0.0.1:8808')
+        gateway.upgraded.is_upgraded = True
     # Loopback for local previews; hosting explicitly opts into 0.0.0.0.
     web.run_app(gateway.app, host=os.environ.get('GATEWAY_BIND','127.0.0.1'), port=int(os.environ.get('PORT','8772')), access_log=None)
 

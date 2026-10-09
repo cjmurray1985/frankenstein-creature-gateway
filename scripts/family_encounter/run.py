@@ -31,6 +31,9 @@ try:
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
     children.append(subprocess.Popen([sys.executable, str(root/'scripts/live_audition/server.py')], cwd=root))
+    if os.environ.get('UPGRADED_PASSWORD_HASH'):
+        upgrade_env = dict(os.environ, PYTHONPATH=str(root/'upgraded'), CREATURE_REHEARSAL_HOSTED='1', CREATURE_HARDWARE_LOCAL='0')
+        children.append(subprocess.Popen([sys.executable, '-m', 'scripts.live_audition.server'], cwd=root/'upgraded', env=upgrade_env))
     children.append(subprocess.Popen([sys.executable, str(Path(__file__).with_name('gateway.py'))], cwd=root))
     while all(child.poll() is None for child in children):
         time.sleep(.5)
