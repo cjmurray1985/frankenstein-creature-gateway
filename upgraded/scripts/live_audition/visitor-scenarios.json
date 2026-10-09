@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "duration_seconds": 28,
+  "scenarios": {
+    "approach": {
+      "label": "Approach and departure",
+      "tracks": [
+        {"id":"sim-a","visible":[[0,18]],"keys":[[0,0.5,0.5,14],[4,0.5,0.5,6],[9,0.64,0.5,6],[14,0.4,0.5,12],[18,0.5,0.5,12]]}
+      ],
+      "expectations": [{"at":0,"phase":"neutral","target":null},{"at":2.2,"target":"sim-a"},{"at":22.2,"phase":"neutral","target":null}]
+    },
+    "group": {
+      "label": "Group / target switching",
+      "tracks": [
+        {"id":"sim-a","visible":[[0,19]],"keys":[[0,0.35,0.5,7]]},
+        {"id":"sim-b","visible":[[4,23]],"keys":[[0,0.73,0.5,7.2],[7.8,0.73,0.5,7.2],[8,0.73,0.5,5]]},
+        {"id":"sim-c","visible":[[12,25]],"keys":[[0,0.5,0.5,12]]}
+      ],
+      "expectations": [{"at":0,"target":"sim-a"},{"at":7,"target":"sim-a"},{"at":10.2,"target":"sim-b"},{"at":24,"phase":"searching","target":"sim-b"},{"at":28,"phase":"neutral","target":null}]
+    },
+    "stale": {
+      "label": "Camera interruption",
+      "stale":[[5,10]],
+      "tracks":[{"id":"sim-a","visible":[[0,28.1]],"keys":[[0,0.5,0.5,6],[5,0.7,0.5,6],[10,0.3,0.5,6],[20,0.5,0.5,6]]}],
+      "expectations":[{"at":0,"target":"sim-a"},{"at":5,"phase":"stale","target":null},{"at":10,"phase":"following","target":"sim-a"}]
+    },
+    "crossing": {
+      "label":"Crossing visitors / brief occlusion",
+      "tracks":[
+        {"id":"sim-a","visible":[[0,9],[11,23]],"keys":[[0,0.2,0.5,6],[18,0.8,0.5,6]]},
+        {"id":"sim-b","visible":[[2,26]],"keys":[[0,0.8,0.5,6.5],[18,0.2,0.5,6.5]]}
+      ],
+      "expectations":[{"at":0,"target":"sim-a"},{"at":10,"phase":"searching","target":"sim-a"},{"at":11.2,"phase":"following","target":"sim-a"},{"at":27.2,"phase":"neutral","target":null}]
+    }
+  }
+}

@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Creature — animated voice audition</title>
+<link rel="preload" href="/assets/special-elite.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="/audition.css">
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js"}}</script>
+<main class="encounter" aria-label="Creature encounter">
+  <section class="stage-shell" aria-label="Creature simulation">
+    <div id="creature-stage"></div>
+    <div id="awakening-cue" class="awakening-cue" role="status" aria-live="polite">
+      <span class="awakening-current" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="awakening-copy">The current gathers in the laboratory…</span>
+    </div>
+  </section>
+  <button id="open-menu" class="secondary menu-toggle" aria-haspopup="dialog" aria-controls="encounter-menu" aria-expanded="false" aria-label="Menu" title="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <button id="start" class="encounter-start" hidden>Speak to the Creature</button>
+  <p id="stage-warning" class="stage-warning" role="alert" hidden></p>
+</main>
+<dialog id="encounter-menu" aria-labelledby="menu-title">
+  <div class="menu-heading"><h1 id="menu-title">The Creature</h1><button id="close-menu" class="secondary">Close menu</button></div>
+  <p class="menu-subtitle">Mourning Colossus · Laboratory</p>
+  <section class="menu-section" aria-label="Audition controls">
+
+<p class="section-label">The voice</p>
+<p class="voice-name" id="voice-name">GPT-Live · Meridian</p>
+<p class="voice-note" id="voice-note">Native voice · Mourning Colossus—labored breath style</p>
+<div class="audition-fields">
+  <label>Output path<select id="mode"><option value="builtin_dsp_natural_clear" selected>GPT-Live + naturalized-clear Colossus DSP</option><option value="builtin_dsp_deep">GPT-Live + deep-clear Colossus DSP</option><option value="builtin_dsp_natural">GPT-Live + naturalized Colossus DSP</option><option value="builtin_dsp_match">GPT-Live + spectrum-matched Colossus DSP</option><option value="builtin_dsp">GPT-Live + original Colossus DSP</option><option value="builtin">GPT-Live raw voice</option><option value="elevenagents">ElevenAgents WebRTC</option><option value="elevenlabs_smooth">ElevenLabs control · smooth stream</option><option value="elevenlabs">ElevenLabs control</option></select></label>
+  <label>Base voice<select id="voice"><option value="vesper">Vesper · British</option><option value="stone">Stone · Irish</option><option value="ripple">Ripple · Australian</option><option value="meridian">Meridian · North American</option><option value="beacon">Beacon · Filipino</option><option value="cinder" selected>Cinder · Southern U.S.</option></select></label>
+<label>Performance style<select id="style-preset"><option value="labored" selected>Mourning Colossus · labored breath</option><option value="restrained">Mourning Colossus · restrained</option><option value="abyssal">Mourning Colossus · abyssal</option><option value="shelleyan">Shelleyan · wounded intelligence</option><option value="shelleyan_clear">Shelleyan · lucid language</option></select></label>
+</div>
+<label class="expressive-control"><input id="expressive-emotion" type="checkbox" checked> More expressive emotion</label>
+<p class="fine">Amplifies the Creature’s gaze, neck, eyelids, bolt-light proxy and brief social gestures. Voice and audio latency are unchanged.</p>
+<div class="actions"><button id="stop" class="secondary" disabled>End audition</button></div>
+<p id="status" role="status">Ready. Up to twenty minutes per encounter.</p>
+<p class="fine" id="path-note">Microphone and replies → GPT-Live. Style is prompt-directed, not voice cloning.<br>No audition recording saved. Headphones recommended.</p>
+<audio id="output" controls autoplay playsinline></audio>
+<div class="divider"></div>
+<p class="section-label">Performance</p>
+<div class="direction"><span>Shared emotional direction</span><strong id="emotion-name">Curious</strong></div>
+<div class="jaw-track"><div id="jaw-level"></div></div><p class="fine">Mouth opening follows the audio you hear.</p>
+<button class="secondary" id="preview">Play reference with animation</button>
+<audio id="reference" controls playsinline preload="none" src="/reference.wav"></audio>
+<details><summary>Mechanisms &amp; fidelity</summary>
+<div id="mechanism-meters"></div>
+<p>CH4/PWM0 and CH5/PWM1: right and left eye vertical axes. CH6/PWM2 and CH7/PWM3: left and right eye horizontal axes. CH8/PWM4: linked eyelids. CH1/PWM5: neck flexion/extension; CH2/PWM6: neck rotation; CH3/PWM7: neck lateral flexion. M1 controls mouth opening. The left and right neck-bolt LEDs are represented as one shared auxiliary signal.</p>
+<p>This is a virtual actuator test bench: percentages are normalized motion/signal estimates, never direct PWM commands. The PCA outputs are shown so browser behavior can be compared with the eventual servo and LED signal routes. The local hardware fit uses iPhone-observed directions and an approximate travel curve. The earlier presentation enlarges neck angles for visibility. Neither mode supplies measured servo feedback or verified mechanical limits.</p>
+<p>The existing conversational emotion rules provide the same direction to ElevenLabs and the eyes and neck posture. A separate semantic cue—think, agree, disagree, listening, surprise, startle, suspicion, repair, plead, relief or withdraw—adds one intentional gesture without turning every word into a motor command. This is not acoustic emotion recognition. Reference playback uses a curious direction.</p>
+<p>Emotion motion is semantic body language: curiosity acquires with the eyes first; attentive listening becomes still and direct; hope opens the lids and leans toward Christopher; engagement holds contact with a slow scan; suspicion leads with a coordinated side-eye and a small head turn; startle opens the gaze and briefly recoils; vulnerability looks upward and asks him to remain; relief releases tension; wariness turns aside; hurt lowers and averts; earned anger advances with a firmer stare; withdrawal looks away and becomes still. With <em>More expressive emotion</em> enabled (the default), these readable changes and social gestures are deliberately easier to see; turn it off for the restrained comparison. Speech adds sparse phrase-level emphasis rather than syllable-by-syllable servo chatter. The normalized <code>LED_BOLTS</code> value drives two dim visual proxy lights only; it is not a calibrated PWM command.</p>
+<p>This is the KIRI scan of the physical Creature, prepared in Blender. The eye shells stay fixed while irises/pupils move; linked lids close independently over them. Drag to inspect the scan from any side; motion limits remain estimates.</p>
+<p>The entrance uses a virtual waist hinge for staging. The viewpoint assumes an eight-foot creature, a five-foot-eleven visitor and five feet of separation; these are presentation proportions, not measured actuator travel.</p>
+<p><a href="/assets/head-reference.png" target="_blank" rel="noopener">Original full-head reference</a></p>
+<p><a href="/rig-notes.md" target="_blank" rel="noopener">Evidence and simulation limits</a></p>
+</details>
+<details id="runtime-diagnostics" class="runtime-diagnostics">
+  <summary>Simulation diagnostics · opt in</summary>
+  <p class="fine">Read-only simulator state for development review. No transcript, audio, visitor identity, token, IP data or secret is shown. Recent expression changes are held temporarily in server memory for this session only.</p>
+  <dl class="diagnostics-grid" aria-live="polite">
+    <div><dt>Ambient mood</dt><dd id="diag-ambient">—</dd></div>
+    <div><dt>Relationship</dt><dd id="diag-relationship">—</dd></div>
+    <div><dt>Familiarity</dt><dd id="diag-familiarity">—</dd></div>
+    <div><dt>Momentary emotion</dt><dd id="diag-momentary">—</dd></div>
+    <div><dt>Presentation cue</dt><dd id="diag-cue">—</dd></div>
+    <div><dt>Transition confidence</dt><dd id="diag-confidence">—</dd></div>
+    <div><dt>Emotion revision</dt><dd id="diag-emotion-revision">—</dd></div>
+    <div><dt>Cue revision</dt><dd id="diag-cue-revision">—</dd></div>
+    <div><dt>Right eye vertical · CH4/PWM0</dt><dd id="diag-ch4">—</dd></div>
+    <div><dt>Left eye vertical · CH5/PWM1</dt><dd id="diag-ch5">—</dd></div>
+    <div><dt>Left eye horizontal · CH6/PWM2</dt><dd id="diag-ch6">—</dd></div>
+    <div><dt>Right eye horizontal · CH7/PWM3</dt><dd id="diag-ch7">—</dd></div>
+    <div><dt>Linked eyelid closure · CH8/PWM4</dt><dd id="diag-ch8">—</dd></div>
+    <div><dt>Neck flexion · CH1/PWM5</dt><dd id="diag-ch1">—</dd></div>
+    <div><dt>Neck rotation · CH2/PWM6</dt><dd id="diag-ch2">—</dd></div>
+    <div><dt>Neck lateral flexion · CH3/PWM7</dt><dd id="diag-ch3">—</dd></div>
+    <div><dt>Archive</dt><dd id="diag-archive">Not connected</dd></div>
+  </dl>
+  <p class="fine">Face and neck readings are the current normalized virtual targets (−100% to +100%); eyelids show closure. They are not measured travel or safe PWM values.</p>
+  <section class="expression-timeline" aria-live="polite">
+    <h3>Recent expression changes</h3>
+    <ol id="diag-timeline"><li>No changes recorded yet.</li></ol>
+  </section>
+</details>
+
+  </section>
+  <section class="menu-section" aria-label="Scene controls">
+    <h2>Scene</h2><p id="scene-state" role="status">Loading the Blender head…</p>
+    <p class="fine">Drag the head to orbit · Pinch or scroll to inspect</p>
+  <div class="view-controls"><button class="secondary" id="reset-view">Reset view</button><label><input type="checkbox" id="wireframe"> Inspect mesh</label><button class="secondary" id="motion-study">Run movement study</button><button class="secondary" id="emotion-study">Run emotional arc</button><button class="secondary" id="replay-entrance">Replay entrance</button></div>
+  <div class="lighting-controls" aria-label="Scene lighting">
+    <div class="lighting-field"><label for="lighting-preset">Lighting</label><select id="lighting-preset"><option value="laboratory">Laboratory</option><option value="moody">Moody</option><option value="moonlight">Moonlight</option><option value="studio">Studio</option></select></div>
+    <div class="lighting-field"><label for="lighting-level">Brightness</label><input id="lighting-level" type="range" min="50" max="150" step="5" value="100"><output id="lighting-value" for="lighting-level">100%</output></div>
+    <label class="flicker-control"><input id="lighting-flicker" type="checkbox" checked> Flicker</label>
+    <label class="flicker-control"><input id="lighting-lightning" type="checkbox" checked> Lightning</label>
+    <button class="secondary" id="test-lightning">Test lightning</button>
+  </div>
+  <div class="scope">KIRI scan · Blender rig. Audio-driven mouth, pupil direction, linked eyelids and neck movement. Actuator travel remains estimated.</div>
+
+  </section>
+<section class="transcript"><p class="section-label">Conversation</p><div id="captions" aria-label="Conversation captions" aria-live="polite"></div></section>
+
+</dialog>
+<script type="module" src="/creature-scene.mjs"></script>
+<script>
+const token='__TOKEN__', ELEVEN_AGENT_ID='agent_6201m3fsx248fprvj4sf18c7th4n', start=document.querySelector('#start'), stop=document.querySelector('#stop'), status=document.querySelector('#status'), mode=document.querySelector('#mode'), voice=document.querySelector('#voice'), stylePreset=document.querySelector('#style-preset'), expressiveEmotion=document.querySelector('#expressive-emotion'), audio=document.querySelector('#output'), captions=document.querySelector('#captions'), reference=document.querySelector('#reference');
+// The legacy path starts after four words for minimum latency. The smooth path
+// waits for sentence-shaped batches and adds a short playback prebuffer so the
+// provider has enough context and the browser can absorb network jitter.
+const SPEECH_IDLE_MS=1100, SPEECH_MIN_CHARS=40, SPEECH_MIN_WORDS=8, SPEECH_FIRST_CHARS=20, SPEECH_FIRST_WORDS=4, HIDDEN_GRACE_MS=5000;
+const SMOOTH_MIN_WORDS=12, SMOOTH_FIRST_MIN_WORDS=6, SMOOTH_PLAYBACK_LEAD=0.22;
+let peer, channel, microphone, ready=false, closing=false, finalized=false, limitTimer, closeTimer, connectTimer, pollTimer, hiddenTimer, speechTimer, speechText='', speechGeneration=0, speechSocket, speechQueue=[], speechStarted=false, audioContext, nextAudioTime=0, speechSources=new Set();
+let elevenConversation=null, elevenMeterTimer=null, elevenSpeaking=false, elevenSdkPromise=null;
+let liveDspNodes=[],liveDspMedia=null,liveDspMeterTimer,dspModuleReady;
+let speechInputEnded=false,speechIdle=false;
+let visitorText='',visitorFinished=false,speechEmotion='curious',speechCue='none',referenceDecode=null;
+let connectionAttempt=0,startupStage='idle';
+window.auditionState={phase:'ready',audioReceived:false};
+function state(phase,message){window.auditionState.phase=phase;status.textContent=message;window.creatureSimulation?.setPhase(phase);window.encounterUI?.setPhase(phase,ready,message);}
+function stage(label){startupStage=label;window.auditionState.startupStage=label;}
+function normalizedSdp(value){
+  // Safari is stricter than Chromium about SDP line endings.
+  return value.replace(/\r\n/g,'\n').replace(/\r/g,'\n').replace(/\n/g,'\r\n').trim()+'\r\n';
+}
+function stopScheduledAudio(){for(const source of speechSources){try{source.stop();}catch{}}speechSources.clear();nextAudioTime=0;window.creatureSimulation?.stop();}
+function stopLiveDsp(){clearInterval(liveDspMeterTimer);liveDspMeterTimer=null;if(liveDspMedia){liveDspMedia.pause();liveDspMedia.srcObject=null;liveDspMedia=null;}for(const node of liveDspNodes){try{node.port?.postMessage({type:'reset'});node.disconnect();}catch{}}liveDspNodes=[];}
+async function stopElevenAgent(){clearInterval(elevenMeterTimer);elevenMeterTimer=null;elevenSpeaking=false;window.creatureSimulation?.setLiveAudioLevel(0,false);const conversation=elevenConversation;elevenConversation=null;if(conversation){try{await conversation.endSession();}catch{}}}
+function rms(analyser,buffer){analyser.getFloatTimeDomainData(buffer);let energy=0;for(const sample of buffer)energy+=sample*sample;return Math.sqrt(energy/buffer.length);}
+async function connectLiveDsp(track,remoteStream){
+  dspModuleReady=dspModuleReady||audioContext.audioWorklet.addModule('/mourning-colossus-worklet.js');
+  await dspModuleReady;stopLiveDsp();
+  const stream=remoteStream||new MediaStream([track]);
+  const media=document.createElement('audio');media.autoplay=true;media.playsInline=true;media.muted=true;media.volume=0;media.srcObject=stream;
+  const source=audioContext.createMediaStreamSource(stream);
+  const deep=mode.value==='builtin_dsp_deep',clear=mode.value==='builtin_dsp_natural_clear',natural=mode.value==='builtin_dsp_natural',matched=mode.value==='builtin_dsp_match';
+  const shifter=new AudioWorkletNode(audioContext,'mourning-colossus-pitch',{numberOfInputs:1,numberOfOutputs:2,outputChannelCount:[1,1],channelCount:1,processorOptions:{variant:deep?'deep':'standard'}});
+  const dry=audioContext.createGain(),mainHigh=audioContext.createBiquadFilter(),mainLow=audioContext.createBiquadFilter(),presence=audioContext.createBiquadFilter(),mainGain=audioContext.createGain();
+  const subLow=audioContext.createBiquadFilter(),subHigh=audioContext.createBiquadFilter(),subGain=audioContext.createGain(),mix=audioContext.createGain();
+  const compressor=audioContext.createDynamicsCompressor(),makeup=audioContext.createGain(),limiter=audioContext.createDynamicsCompressor();
+  const rawMeter=audioContext.createAnalyser(),outputMeter=audioContext.createAnalyser();rawMeter.fftSize=256;outputMeter.fftSize=256;
+  // Unlike the offline FFmpeg chain, the real-time pitch shifter carries a
+  // bounded look-behind buffer. A parallel dry layer therefore arrives early
+  // and sounds like a second speaker. Keep it silent unless fail-open is needed.
+  dry.gain.value=0;mainHigh.type='highpass';mainHigh.frequency.value=32;mainLow.type='lowpass';mainLow.frequency.value=10200;presence.type='highshelf';presence.frequency.value=2500;presence.gain.value=deep?3:clear?4:natural?5:matched?9.5:0;mainGain.gain.value=.94;
+  subLow.type='lowpass';subLow.frequency.value=(deep||clear)?1600:2100;subHigh.type='highpass';subHigh.frequency.value=28;subGain.gain.value=(deep||clear)?.02:(natural||matched)?.03:.10;
+  compressor.threshold.value=-18.4;compressor.ratio.value=2;compressor.attack.value=.02;compressor.release.value=.24;makeup.gain.value=deep?3.2:clear?3.3:natural?3.4:matched?3.75:2.2;
+  limiter.threshold.value=-2;limiter.knee.value=0;limiter.ratio.value=20;limiter.attack.value=.005;limiter.release.value=.1;
+  shifter.onprocessorerror=()=>{dry.gain.setValueAtTime(1,audioContext.currentTime);window.auditionState.dspFallback=true;state('connected','Local pitch processor stopped; playing the raw GPT-Live voice.');};
+  source.connect(rawMeter);source.connect(dry).connect(mix);source.connect(shifter);shifter.connect(mainHigh,0,0);mainHigh.connect(mainLow).connect(presence).connect(mainGain).connect(mix);shifter.connect(subLow,1,0);subLow.connect(subHigh).connect(subGain).connect(mix);mix.connect(compressor).connect(makeup).connect(limiter).connect(outputMeter).connect(await (window.creatureHardware?.destination(audioContext)??Promise.resolve(audioContext.destination)));
+  liveDspMedia=media;await media.play();
+  const rawBuffer=new Float32Array(rawMeter.fftSize),outputBuffer=new Float32Array(outputMeter.fftSize);
+  liveDspMeterTimer=setInterval(()=>{const raw=rms(rawMeter,rawBuffer),processed=rms(outputMeter,outputBuffer);status.dataset.dspRawRms=raw.toFixed(6);status.dataset.dspOutputRms=processed.toFixed(6);status.dataset.dspRawPeakRms=Math.max(raw,Number(status.dataset.dspRawPeakRms||0)).toFixed(6);status.dataset.dspOutputPeakRms=Math.max(processed,Number(status.dataset.dspOutputPeakRms||0)).toFixed(6);const mouthLevel=Math.max(0,Math.min(1,(processed-.009)*7.5));window.creatureSimulation?.setLiveAudioLevel(mouthLevel,processed>.012);},20);
+  liveDspNodes=[source,shifter,dry,mainHigh,mainLow,presence,mainGain,subLow,subHigh,subGain,mix,compressor,makeup,limiter,rawMeter,outputMeter];
+  window.auditionState.dspEstimatedBufferMs=150;
+}
+function interruptEleven(){speechGeneration++;clearTimeout(speechTimer);speechText='';speechQueue=[];speechStarted=false;speechInputEnded=false;speechIdle=false;if(speechSocket){try{speechSocket.send(JSON.stringify({type:'cancel'}));}catch{}speechSocket.close();speechSocket=null;}if(elevenConversation)stopElevenAgent();stopScheduledAudio();audio.pause();audio.currentTime=0;audio.removeAttribute('src');audio.load();}
+function enoughText(text,initial=false){return text.length>=(initial?SPEECH_FIRST_CHARS:SPEECH_MIN_CHARS)&&text.trim().split(/\s+/).length>=(initial?SPEECH_FIRST_WORDS:SPEECH_MIN_WORDS);}
+function playPcm(arrayBuffer,generation){if(generation!==speechGeneration||closing||!arrayBuffer.byteLength)return;const samples=new Int16Array(arrayBuffer), floats=new Float32Array(samples.length);for(let i=0;i<samples.length;i++)floats[i]=samples[i]/32768;const buffer=audioContext.createBuffer(1,floats.length,44100);buffer.copyToChannel(floats,0);const source=audioContext.createBufferSource();source.buffer=buffer;source.connect(audioContext.destination);const lead=mode.value==='elevenlabs_smooth'?SMOOTH_PLAYBACK_LEAD:0.06;const when=Math.max(audioContext.currentTime+lead,nextAudioTime);source.start(when);window.creatureSimulation?.attachAudio(audioContext);window.creatureSimulation?.schedule(floats,44100,when,speechEmotion);nextAudioTime=when+buffer.duration;speechSources.add(source);source.onended=()=>speechSources.delete(source);if(window.auditionState.firstPcmAt==null)window.auditionState.firstPcmAt=performance.now();}
+function sendSpeech(message){if(speechSocket?.readyState===WebSocket.OPEN)speechSocket.send(JSON.stringify(message));else speechQueue.push(message);}
+function beginSpeech(text,endImmediately=false){
+  if(closing||speechSocket)return;
+  const generation=++speechGeneration;
+  let completed=false,failed=false,receivedPcm=false;
+  speechStarted=true;speechInputEnded=endImmediately;
+  window.auditionState.speechStartedAt=performance.now();window.auditionState.firstPcmAt=null;
+  state('rendering','Streaming the Mourning Colossus…');
+  const socket=new WebSocket(`ws://localhost:8768/speech?token=${encodeURIComponent(token)}`);
+  speechSocket=socket;socket.binaryType='arraybuffer';
+  speechQueue.push({type:'start',text,visitor_text:visitorText,mode:mode.value});
+  if(endImmediately)speechQueue.push({type:'end'});
+  socket.onopen=()=>{
+    if(generation!==speechGeneration)return;
+    for(const message of speechQueue)socket.send(JSON.stringify(message));speechQueue=[];
+  };
+  socket.onmessage=event=>{
+    if(generation!==speechGeneration)return;
+    if(event.data instanceof ArrayBuffer){receivedPcm=true;playPcm(event.data,generation);return;}
+    const message=JSON.parse(event.data);
+    if(message.type==='direction'){speechEmotion=message.emotion;speechCue=message.cue||'none';window.auditionState.emotion=speechEmotion;window.auditionState.cue=speechCue;window.creatureSimulation?.setDirection?.(speechEmotion);window.creatureSimulation?.setCue?.(speechCue);}
+    else if(message.type==='done'){
+      completed=true;socket.close();speechSocket=null;speechStarted=false;speechInputEnded=false;
+      state('connected','Live through ElevenLabs—speak or interrupt naturally.');
+      // An idle pause is only a segment boundary, not proof the reply is over.
+      // Keep all later transcript text until the previous stream has drained.
+      drainSpeech(speechIdle);
+    }else if(message.type==='error'){
+      failed=true;window.auditionState.error=message.message;state('error',message.message);
+    }
+  };
+  socket.onerror=()=>{if(generation===speechGeneration){failed=true;window.auditionState.error='Local ElevenLabs stream failed';state('error',window.auditionState.error);}};
+  socket.onclose=event=>{
+    if(generation!==speechGeneration||completed)return;
+    if(speechSocket===socket)speechSocket=null;
+    if(!closing&&!failed){
+      const message=event.code===1013?'Voice reply is still finishing. Please try speaking again.':event.code===1008?'Voice stream unavailable. End this audition and start again.':receivedPcm?'Voice stream ended unexpectedly.':'Voice stream closed before any audio arrived. Please try again.';
+      window.auditionState.error=message;state('error',message);
+    }
+  };
+}
+function takeSpeechText(final){
+  // Live deltas can split a word. The provider adapter separates chunks with
+  // spaces, so only send complete words (and complete bracketed cues).
+  const smooth=mode.value==='elevenlabs_smooth';
+  if(smooth){
+    let boundary=final?speechText.length:0,brackets=0,lastSentence=0;
+    if(!final){
+      for(let i=0;i<speechText.length;i++){
+        if(speechText[i]==='[')brackets++;
+        else if(speechText[i]===']')brackets=Math.max(0,brackets-1);
+        else if(!brackets&&/[.!?]/.test(speechText[i])&&/\s/.test(speechText[i+1]||'')){lastSentence=i+1;while(/\s/.test(speechText[lastSentence]||''))lastSentence++;}
+      }
+      const sentence=speechText.slice(0,lastSentence);
+      const words=sentence.trim().split(/\s+/).filter(Boolean).length;
+      const minimum=speechStarted?SMOOTH_MIN_WORDS:SMOOTH_FIRST_MIN_WORDS;
+      if(lastSentence&&words>=minimum)boundary=lastSentence;
+      else if(!lastSentence||!enoughText(speechText.slice(0,lastSentence||speechText.length),speechStarted))return '';
+    }
+    const text=speechText.slice(0,boundary);speechText=speechText.slice(boundary);return text;
+  }
+  let boundary=final?speechText.length:0,brackets=0;
+  if(!final){
+    for(let i=0;i<speechText.length;i++){
+      if(speechText[i]==='[')brackets++;
+      else if(speechText[i]===']')brackets=Math.max(0,brackets-1);
+      else if(/\s/.test(speechText[i])&&!brackets)boundary=i+1;
+    }
+    if(!enoughText(speechText.slice(0,boundary),!speechSocket))return '';
+  }
+  const text=speechText.slice(0,boundary);speechText=speechText.slice(boundary);return text;
+}
+function drainSpeech(final=false){
+  if(closing||speechInputEnded)return;
+  const text=takeSpeechText(final);
+  if(!speechSocket){if(text.trim())beginSpeech(text,final);return;}
+  if(text.trim())sendSpeech({type:'text',text});
+  if(final){speechInputEnded=true;sendSpeech({type:'end'});}
+}
+function appendSpeech(delta){
+  speechText+=delta;speechIdle=false;drainSpeech();
+  clearTimeout(speechTimer);speechTimer=setTimeout(finishSpeech,SPEECH_IDLE_MS);
+}
+function finishSpeech(){clearTimeout(speechTimer);speechIdle=true;drainSpeech(true);}
+function appendElevenMessage(message){
+  const role=message?.role||(message?.source==='ai'?'agent':message?.source);
+  if(role!=='user'&&role!=='agent')return;
+  const speaker=role==='user'?'Christopher':'Creature';
+  if(window.auditionState.lastSpeaker!==speaker){captions.append(document.createTextNode('\n\n'+speaker+': '));window.auditionState.lastSpeaker=speaker;}
+  captions.append(document.createTextNode(message.message||''));captions.scrollTop=captions.scrollHeight;
+}
+async function loadElevenSdk(){
+  elevenSdkPromise=elevenSdkPromise||import('https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.25.0/+esm');
+  return elevenSdkPromise;
+}
+async function startElevenAgent(attempt){
+  state('connecting','Connecting to ElevenAgents over WebRTC…');
+  const {Conversation}=await loadElevenSdk();
+  const conversation=await Conversation.startSession({
+    agentId:ELEVEN_AGENT_ID,connectionType:'webrtc',
+    onConnect:({conversationId})=>{if(attempt!==connectionAttempt||closing)return;ready=true;window.auditionState.audioReceived=true;window.auditionState.conversationId=conversationId;clearTimeout(connectTimer);state('connected','Live through ElevenAgents WebRTC—speak or interrupt naturally.');},
+    onDisconnect:()=>{if(attempt!==connectionAttempt||closing)return;window.auditionState.error='ElevenAgents disconnected.';state('ended',window.auditionState.error);cleanup();},
+    onMessage:appendElevenMessage,
+    onModeChange:({mode:value})=>{elevenSpeaking=value==='speaking';window.creatureSimulation?.setLiveAudioLevel(elevenSpeaking?1:0,elevenSpeaking);},
+    onError:(message)=>{if(attempt!==connectionAttempt||closing)return;window.auditionState.error='ElevenAgents: '+message;state('error',window.auditionState.error);end();},
+  });
+  if(attempt!==connectionAttempt||closing){await conversation.endSession().catch(()=>{});return;}
+  elevenConversation=conversation;
+  elevenMeterTimer=setInterval(()=>{
+    if(!elevenConversation)return;
+    try{
+      const bins=conversation.getOutputByteFrequencyData?.();
+      let level=0;if(bins?.length){for(const value of bins)level+=value;level/=bins.length*255;}
+      window.creatureSimulation?.setLiveAudioLevel(Math.min(1,level*2.2),elevenSpeaking);
+    }catch{}
+  },80);
+  limitTimer=setTimeout(end,1200000);
+}
+function scheduleHiddenEnd(){clearTimeout(hiddenTimer);hiddenTimer=null;if(!document.hidden||!ready||closing)return;hiddenTimer=setTimeout(()=>{hiddenTimer=null;if(document.hidden&&ready&&!closing)leaveEncounter();},HIDDEN_GRACE_MS);}
+function cleanup(){window.creatureRecording?.stop();connectionAttempt++;finalized=true;interruptEleven();stopLiveDsp();clearTimeout(limitTimer);clearTimeout(closeTimer);clearTimeout(connectTimer);clearTimeout(hiddenTimer);clearInterval(pollTimer);hiddenTimer=null;ready=false;if(channel){channel.onclose=null;channel.onmessage=null;}if(peer){peer.onconnectionstatechange=null;peer.ontrack=null;}microphone?.getTracks().forEach(t=>t.stop());channel?.close();peer?.close();audio.srcObject=null;start.disabled=false;stop.disabled=true;voice.disabled=false;mode.disabled=Boolean(window.creatureHardware?.enabled);stylePreset.disabled=false;refreshVoiceSummary();resetDiagnostics({preserveTimeline:true});window.encounterUI?.reset();}
+function paintDiagnostics(value){const fields={ambient:'diag-ambient',relationship:'diag-relationship',familiarity:'diag-familiarity',momentary:'diag-momentary',cue:'diag-cue','emotion_revision':'diag-emotion-revision','cue_revision':'diag-cue-revision',archive_status:'diag-archive'};for(const [key,id] of Object.entries(fields)){const node=document.getElementById(id);if(node)node.textContent=key==='archive_status'&&value?.[key]==='not_connected'?'Not connected':value?.[key]??'—';}const confidence=document.getElementById('diag-confidence');if(confidence)confidence.textContent=Number.isFinite(value?.confidence)?`${Math.round(value.confidence*100)}%`:'—';}
+function paintPoseDiagnostics(){let pose;try{pose=JSON.parse(document.querySelector('canvas')?.dataset.poseTargets||'null');}catch{return;}if(!pose)return;for(const key of ['CH1','CH2','CH3','CH4','CH5','CH6','CH7']){const node=document.getElementById(`diag-${key.toLowerCase()}`);if(node&&Number.isFinite(pose[key]))node.textContent=`${pose[key]>=0?'+':''}${Math.round(pose[key]*100)}%`;}const lids=document.getElementById('diag-ch8');if(lids&&Number.isFinite(pose.CH8))lids.textContent=`${Math.round(pose.CH8*100)}% closed`;}
+function resetDiagnostics({preserveTimeline=false}={}){paintDiagnostics({archive_status:'not_connected'});for(const id of ['ch1','ch2','ch3','ch4','ch5','ch6','ch7','ch8']){const node=document.getElementById(`diag-${id}`);if(node)node.textContent='—';}if(!preserveTimeline)paintTimeline([]);}
+function paintTimeline(entries){const list=document.getElementById('diag-timeline');if(!list)return;list.replaceChildren();if(!Array.isArray(entries)||!entries.length){const item=document.createElement('li');item.textContent='No changes recorded yet.';list.append(item);return;}for(const event of entries.slice(-12)){const item=document.createElement('li');const time=Number.isFinite(event.at_ms)?`${(event.at_ms/1000).toFixed(1)}s`:'';const change=event.kind==='emotion'?`${event.from||'start'} → ${event.to}`:`${event.from||'none'} → ${event.to}`;item.textContent=[time,event.kind,change,event.source].filter(Boolean).join(' · ');list.append(item);}}
+async function signalStop(){await fetch('/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token}),keepalive:true}).catch(()=>{});}
+function end(){window.creatureRecording?.stop();if(closing)return;closing=true;stop.disabled=true;microphone?.getTracks().forEach(t=>t.stop());interruptEleven();if(mode.value==='elevenagents'){state('ended','Ended.');cleanup();return;}state('closing','Ending audition…');signalStop();if(channel?.readyState==='open')channel.send(JSON.stringify({type:'session.close'}));closeTimer=setTimeout(()=>{state('ended','Ended. Final usage confirmation unavailable.');cleanup();},15000);}
+start.onclick=async()=>{
+const attempt=++connectionAttempt;
+start.disabled=true;stop.disabled=false;voice.disabled=true;mode.disabled=true;stylePreset.disabled=true;closing=false;finalized=false;visitorText='';visitorFinished=false;speechEmotion='curious';speechCue='none';window.auditionState={phase:'connecting',audioReceived:false,mode:mode.value,voice:voice.value,style:stylePreset.value,expressive:expressiveEmotion.checked};stage('browser setup');window.creatureSimulation?.setExpressive?.(expressiveEmotion.checked);captions.textContent='';reference.pause();interruptEleven();state('connecting','Connecting—allow microphone access if prompted.');
+try{
+stage('secure microphone check');
+if(!window.isSecureContext)throw Error('Open the laboratory’s HTTPS link to enable the microphone on your phone.');
+if(!navigator.mediaDevices?.getUserMedia)throw Error('Microphone access is unavailable. Open this page directly in Safari or Chrome.');
+// Unlock Web Audio in the tap handler, before microphone/network awaits.
+stage('audio unlock');audioContext=window.creatureHardware?.enabled?await window.creatureHardware.context():(audioContext||new AudioContext());await audioContext.resume();
+if(attempt!==connectionAttempt||closing)return;
+stage('iPhone recording');await window.creatureRecording?.start();
+if(attempt!==connectionAttempt||closing){window.creatureRecording?.stop();return;}
+if(mode.value==='elevenagents'){await startElevenAgent(attempt);return;}
+stage('WebRTC setup');peer=new RTCPeerConnection();
+peer.ontrack=async e=>{window.auditionState.audioReceived=true;const remoteStream=e.streams?.[0]||new MediaStream([e.track]);if(mode.value==='builtin'){audio.srcObject=remoteStream;audio.play().catch(()=>state('connected','Connected. Press play above to hear the Creature.'));}else if(mode.value==='builtin_dsp'||mode.value==='builtin_dsp_match'||mode.value==='builtin_dsp_natural'||mode.value==='builtin_dsp_natural_clear'||mode.value==='builtin_dsp_deep'){try{await connectLiveDsp(e.track,remoteStream);}catch(error){stopLiveDsp();if(window.creatureHardware?.enabled){window.creatureHardware.disconnect('Audio routing failed: '+error.message);end();return;}window.auditionState.dspFallback=true;window.auditionState.error='Local voice processing unavailable: '+error.message;audio.srcObject=remoteStream;try{await audio.play();state('connected','Local pitch processing is unavailable here; playing the raw Creature voice.');}catch{state('connected','Connected. Press play above to hear the Creature.');}}}else{e.track.enabled=false;}};
+stage('microphone permission');const acquired=window.creatureHardware?.enabled?await window.creatureHardware.microphone():await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+if(attempt!==connectionAttempt||closing){acquired.getTracks().forEach(t=>t.stop());return;}
+microphone=acquired;
+microphone.getAudioTracks().forEach(t=>peer.addTrack(t,microphone));
+stage('data channel');channel=peer.createDataChannel('oai-events');
+channel.onmessage=({data})=>{const e=JSON.parse(data);if(e.type==='session.started'){
+ready=true;clearTimeout(connectTimer);state('connected',(mode.value==='elevenlabs'||mode.value==='elevenlabs_smooth')?'Live through ElevenLabs—waiting for the Creature’s invitation.':mode.value==='builtin_dsp_deep'?'Live through deep local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_natural_clear'?'Live through naturalized-clear local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_natural'?'Live through naturalized local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp_match'?'Live through spectrum-matched local Colossus processing—speak or interrupt naturally.':mode.value==='builtin_dsp'?'Live through original local Colossus processing—speak or interrupt naturally.':'Live raw voice—speak or interrupt naturally.');scheduleHiddenEnd();
+const openingDirection=stylePreset.value==='shelleyan_clear'
+  ?'Begin this encounter now in two or three quiet sentences. Notice Christopher, reveal a fragment of wary curiosity, and ask one pointed question that invites a real answer. Speak each sentence as a separate thought: let it land, leave an audible half-second of silence before the next sentence, and leave a longer silence after a grave realization. Do not announce the audition.'
+  :'Begin this encounter now in two or three quiet sentences. Notice Christopher, reveal a fragment of wary curiosity, and ask one pointed question that invites a real answer. Then listen. Do not announce the audition.';
+channel.send(JSON.stringify({type:'session.instructions.append',event_id:crypto.randomUUID(),delegation_id:null,content:openingDirection}));
+limitTimer=setTimeout(end,1200000);
+}else if(e.type==='session.closed'){const recoverableHandoff=window.auditionState.recoverableHandoff;finalized=true;window.auditionState.usage=e.usage;state('ended','Audition ended. You can start another session.');cleanup();if(recoverableHandoff)window.encounterUI?.setWarning?.('The Live session closed after a reply interruption. Tap Speak to the Creature to start a new encounter.');}
+else if(e.type==='session.input_transcript.delta'||e.type==='session.output_transcript.delta'){
+const speaker=e.type.includes('input_')?'Christopher':'Creature';if(speaker==='Christopher'&&window.auditionState.recoverableHandoff){window.auditionState.recoverableHandoff=false;window.auditionState.error=null;window.encounterUI?.clearWarning?.();state('connected','The Creature is listening again.');}if(window.auditionState.lastSpeaker!==speaker){captions.append(document.createTextNode('\n\n'+speaker+': '));window.auditionState.lastSpeaker=speaker;}captions.append(document.createTextNode(e.delta));captions.scrollTop=captions.scrollHeight;
+if(mode.value==='elevenlabs'||mode.value==='elevenlabs_smooth'){if(speaker==='Christopher'){if(visitorFinished){visitorText='';visitorFinished=false;}visitorText+=e.delta;interruptEleven();}else{visitorFinished=true;appendSpeech(e.delta);}}
+}else if(e.type==='error'){const error=e.error||{},message=typeof error==='string'?error:error.message||'The Live session returned an error.';window.auditionState.error=message;if(window.encounterUI?.classifyLiveError?.(error)==='recoverable_handoff'){window.auditionState.recoverableHandoff=true;state('connected','The Creature lost the thread briefly. Speak again to continue, or choose End audition.');window.encounterUI?.setWarning?.('The Creature lost the thread briefly. Keep speaking to try again, or choose End audition.');}else{state('error',message);end();}}};
+channel.onclose=()=>{if(!finalized&&!closing){signalStop();state('ended','Connection closed.');cleanup();}};
+peer.onconnectionstatechange=()=>{if(peer?.connectionState==='failed'){signalStop();state('error','Audio connection failed.');cleanup();}};
+stage('local WebRTC offer');await peer.setLocalDescription(await peer.createOffer());
+stage('network candidates');if(peer.iceGatheringState!=='complete')await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Connection setup timed out')),10000);peer.addEventListener('icegatheringstatechange',function check(){if(peer.iceGatheringState==='complete'){clearTimeout(timer);peer.removeEventListener('icegatheringstatechange',check);resolve();}});});
+if(attempt!==connectionAttempt||closing)return;
+stage('Live session request');let r,responseText;for(let requestAttempt=0;requestAttempt<3;requestAttempt++){r=await fetch('/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,voice:voice.value,style:stylePreset.value,mode:mode.value,sdp:peer.localDescription.sdp})});responseText=await r.text();if(r.status!==502||requestAttempt===2)break;await new Promise(resolve=>setTimeout(resolve,700*(requestAttempt+1)));}
+stage('Live session response');let result;try{result=JSON.parse(responseText);}catch{const error=Error(`The encounter gateway returned an invalid response (${r.status}).`);error.status=r.status;throw error;}if(r.status===401){location.href='/login';return;}if(!r.ok){const stale=r.status===403&&result.code==='stale_audition_token';const providerCode=result.provider_code?` (${result.provider_code})`:'';const providerReason=result.provider_reason?` [${result.provider_reason}]`:'';const providerDetail=result.provider_detail?` — ${result.provider_detail}`:'';const error=Error(stale?result.error:r.status===403?'OpenAI denied Live voice access (403): '+(result.error||'Access denied')+' Check this API project’s Live access and key permissions.':(result.error||'Session creation failed')+providerCode+providerReason+providerDetail);error.status=r.status;error.code=result.code||result.provider_code;throw error;}
+if(attempt!==connectionAttempt||closing){signalStop();return;}
+stage('remote WebRTC answer');const answer=result?.transport?.sdp;if(typeof answer!=='string'||!/^v=0(?:\r?\n|$)/.test(answer))throw Error('The Live service returned an invalid audio answer.');
+try{await peer.setRemoteDescription({type:'answer',sdp:normalizedSdp(answer)});}catch(error){error.startupStage='remote WebRTC answer';throw error;}
+if(attempt!==connectionAttempt||closing)return;
+connectTimer=setTimeout(()=>{if(!ready){end();}},20000);
+pollTimer=setInterval(async()=>{try{const diagnostics=document.querySelector('#runtime-diagnostics').open;const s=await(await fetch(`/status${diagnostics?'?diagnostics=1':''}`)).json();if(s.emotion&&s.emotion!==window.auditionState.emotion){speechEmotion=s.emotion;window.auditionState.emotion=s.emotion;window.creatureSimulation?.setDirection?.(s.emotion);}if(s.cue&&s.cue!==window.auditionState.cue){speechCue=s.cue;window.auditionState.cue=s.cue;window.creatureSimulation?.setCue?.(s.cue);}if(diagnostics){if(s.diagnostics)paintDiagnostics(s.diagnostics);else if(!s.active)resetDiagnostics({preserveTimeline:true});paintPoseDiagnostics();paintTimeline(s.timeline);}if(s.stop_requested&&!closing)end();}catch{}},350);
+}catch(e){if(attempt!==connectionAttempt)return;const limited=e.status===429;const exhausted=limited&&e.code==='credit_balance_exhausted';const familyLimited=limited&&e.code==='family_session_limit';const failedStage=e.startupStage||startupStage;const raw=e?.message||String(e)||'Unknown browser error';const message=exhausted?'The OpenAI API project has exhausted its credit balance. Add API credits or use a funded Live-enabled project/key, then reload this page.':familyLimited?'The family encounter limit has been reached. Please return later.':limited?'The instruments have grown fevered. Let the current subside, then summon me again.':e.name==='NotAllowedError'?'Microphone permission was denied. Allow microphone access in this website’s browser settings, then try again.':`${failedStage}: ${raw}`;window.auditionState.error=message;window.auditionState.failureStage=failedStage;console.error('Creature connection failed',{stage:failedStage,name:e?.name,message:raw});signalStop();cleanup();state(exhausted?'billing':familyLimited?'limit':limited?'limit':'error',message);}
+};
+stop.onclick=end;
+function refreshVoiceSummary(){
+  const agents=mode.value==='elevenagents',eleven=mode.value==='elevenlabs'||mode.value==='elevenlabs_smooth',native=!agents&&!eleven,processed=mode.value==='builtin_dsp'||mode.value==='builtin_dsp_match'||mode.value==='builtin_dsp_natural'||mode.value==='builtin_dsp_natural_clear'||mode.value==='builtin_dsp_deep';
+  const voiceNames={ripple:'Ripple',vesper:'Vesper',stone:'Stone',meridian:'Meridian',beacon:'Beacon',cinder:'Cinder'};
+  const styleNames={labored:'Mourning Colossus · labored breath',restrained:'Mourning Colossus · restrained',abyssal:'Mourning Colossus · abyssal',shelleyan:'Shelleyan · wounded intelligence',shelleyan_clear:'Shelleyan · lucid language'};
+  const styleName=styleNames[stylePreset.value]||styleNames.labored;
+  document.querySelector('#voice-name').textContent=agents?'Mourning Colossus · ElevenAgents':native?'GPT-Live · '+(voiceNames[voice.value]||voiceNames.vesper):'Mourning Colossus';
+  const dspLabel=mode.value==='builtin_dsp_deep'?'deep-clear':mode.value==='builtin_dsp_natural_clear'?'naturalized-clear':mode.value==='builtin_dsp_natural'?'naturalized':mode.value==='builtin_dsp_match'?'spectrum-matched':'original';
+  document.querySelector('#voice-note').textContent=agents?'Published ElevenAgents WebRTC · Mourning Colossus · Flash v2 · Expressive Mode off':processed?'Native voice · '+dspLabel+' local pitch/subharmonic DSP · '+styleName:native?'Raw native voice · '+styleName+' style':mode.value==='elevenlabs_smooth'?'ElevenLabs control · sentence-batched smooth stream':'ElevenLabs control · GPT-Live conversation';
+  document.querySelector('#path-note').innerHTML=agents?'Microphone and replies → ElevenAgents WebRTC.<br>No local recording saved. Headphones recommended.':processed?'Microphone → GPT-Live. Only the locally transformed voice reaches the speaker.<br>No ElevenLabs request or audition recording. Headphones recommended.':native?'Microphone and replies → GPT-Live without processing.<br>No audition recording saved. Headphones recommended.':mode.value==='elevenlabs_smooth'?'Microphone → GPT-Live. Replies → ElevenLabs with sentence batching and playback buffering.<br>No audition recording saved. Headphones recommended.':'Microphone → GPT-Live. Replies → ElevenLabs Mourning Colossus.<br>No audition recording saved. Headphones recommended.';
+  voice.disabled=!native;
+}
+mode.addEventListener('change',refreshVoiceSummary);voice.addEventListener('change',refreshVoiceSummary);stylePreset.addEventListener('change',refreshVoiceSummary);refreshVoiceSummary();
+expressiveEmotion.addEventListener('change',()=>{window.auditionState.expressive=expressiveEmotion.checked;window.creatureSimulation?.setExpressive?.(expressiveEmotion.checked);});
+async function prepareReference(){
+  audioContext=window.creatureHardware?.enabled?await window.creatureHardware.context():(audioContext||new AudioContext());await audioContext.resume();
+  if(!referenceDecode)referenceDecode=fetch('/reference.wav').then(r=>r.arrayBuffer()).then(b=>audioContext.decodeAudioData(b)).catch(e=>{referenceDecode=null;throw e;});
+  const decoded=await referenceDecode;
+  reference.__sampleRate=decoded.sampleRate;
+  window.creatureSimulation?.bindReference(reference,decoded.getChannelData(0),decoded.sampleRate);
+}
+reference.onplay=async()=>{if(window.creatureHardware?.enabled){reference.pause();status.textContent='Use the live encounter for reSpeaker audio while hardware is connected.';return;}if(ready||start.disabled){reference.pause();status.textContent='End the live audition before playing the reference.';return;}try{await prepareReference();}catch{status.textContent='Reference animation could not load.';}};
+const preview=document.querySelector('#preview');
+preview.onclick=async()=>{if(ready||start.disabled)return;if(!reference.paused){reference.pause();return;}try{reference.currentTime=0;await reference.play();}catch{status.textContent='Reference playback could not start.';}};
+reference.addEventListener('play',()=>{preview.textContent='Stop reference';});
+reference.addEventListener('pause',()=>{preview.textContent='Play reference with animation';});
+reference.addEventListener('ended',()=>{preview.textContent='Play reference with animation';});
+reference.onpause=()=>window.creatureSimulation?.stop();
+reference.onended=()=>window.creatureSimulation?.stop();
+function leaveEncounter(){
+  reference.pause();
+  if(!start.disabled&&!ready)return;
+  closing=true;clearTimeout(hiddenTimer);hiddenTimer=null;if(mode.value!=='elevenagents')signalStop();
+  if(channel?.readyState==='open')channel.send(JSON.stringify({type:'session.close'}));
+  cleanup();state('ended','Encounter ended while the page was away. Tap Speak to the Creature to reconnect.');
+}
+window.addEventListener('pagehide',leaveEncounter);
+window.addEventListener('visibilitychange',()=>{
+  // Mobile Safari can briefly report hidden while a permission/WebRTC surface
+  // is opening. Debounce the background safety stop so transient state changes
+  // do not end a newly connected encounter.
+  scheduleHiddenEnd();
+});
+</script>
+<script type="module" id="encounter-ui">
+const menu=document.querySelector('#encounter-menu'),openMenu=document.querySelector('#open-menu'),closeMenu=document.querySelector('#close-menu'),startButton=document.querySelector('#start'),stageWarning=document.querySelector('#stage-warning');
+function showMenu(){if(!menu.open)menu.showModal();openMenu.setAttribute('aria-expanded','true');closeMenu.focus();}
+function hideMenu(){if(menu.open)menu.close();}
+openMenu.addEventListener('click',showMenu);closeMenu.addEventListener('click',hideMenu);
+menu.addEventListener('click',event=>{if(event.target===menu)hideMenu();});
+menu.addEventListener('close',()=>{openMenu.setAttribute('aria-expanded','false');openMenu.focus();});
+startButton.addEventListener('click',hideMenu);
+let entranceComplete=false,sessionHidden=false;
+function syncStart(){startButton.hidden=!entranceComplete||sessionHidden;if(startButton.hidden&&document.activeElement===startButton)openMenu.focus();}
+syncStart();
+window.encounterUI={
+  classifyLiveError(error){const code=error?.code||error?.type,message=String(error?.message||'').trim();return code==='invalid_request_error'&&/^Responses handoff incomplete\.?$/i.test(message)?'recoverable_handoff':'fatal';},
+  setWarning(message){stageWarning.hidden=!message;stageWarning.textContent=message||'';},
+  clearWarning(){stageWarning.hidden=true;stageWarning.textContent='';},
+  setEntranceComplete(value){if(entranceComplete===value)return;entranceComplete=value;syncStart();},
+  setPhase(phase,active=false,message=''){
+    sessionHidden=['connected','rendering','closing'].includes(phase)||(active&&phase==='error');
+    syncStart();
+    startButton.textContent=phase==='connecting'?'Connecting…':'Speak to the Creature';
+    stageWarning.hidden=!(phase==='limit'||phase==='error');
+    if(phase==='limit'){stageWarning.textContent=message;hideMenu();}
+    if(phase==='error'){stageWarning.textContent=message;hideMenu();}
+    if(startButton.hidden&&document.activeElement===startButton)openMenu.focus();
+  },
+  reset(){sessionHidden=false;syncStart();startButton.textContent='Speak to the Creature';stageWarning.hidden=true;},
+};
+</script>
+</html>

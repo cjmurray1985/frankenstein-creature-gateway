@@ -3,6 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certi
 WORKDIR /app
 COPY scripts/family_encounter/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
+COPY upgraded /app/upgraded
 COPY creature_runtime /app/creature_runtime
 COPY frankenstein_monster_lore_emotion_interactivity.md /app/
 COPY scripts/live_audition /app/scripts/live_audition

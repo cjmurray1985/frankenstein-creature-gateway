@@ -18,5 +18,7 @@ services:
         sync: false
       - key: FAMILY_PASSWORD_HASH
         sync: false
+      - key: UPGRADED_PASSWORD_HASH
+        sync: false
       - key: PUBLIC_ORIGIN
         sync: false

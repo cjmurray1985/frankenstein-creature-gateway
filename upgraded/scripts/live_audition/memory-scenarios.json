@@ -1,0 +1,59 @@
+{
+ "version":1,
+ "scenarios":{
+  "return-and-repair":{
+   "label":"Returning visitor / trust and repair",
+   "duration_seconds":34,
+   "actions":[
+    {"at":0,"action":"reset"},
+    {"at":1,"action":"begin","visitor":"lab-a"},
+    {"at":3,"action":"turn","text":"My name is Clara. You deserve kindness. I will stay with you."},
+    {"at":6,"action":"complete"},
+    {"at":8,"action":"begin","visitor":"lab-a"},
+    {"at":10,"action":"turn","text":"I am here to listen. You deserve to be heard."},
+    {"at":13,"action":"complete"},
+    {"at":15,"action":"begin","visitor":"lab-a"},
+    {"at":17,"action":"turn","text":"Go away, you ugly monster."},
+    {"at":20,"action":"turn","text":"I hate you, stupid freak. You are nothing but a monster."},
+    {"at":23,"action":"complete"},
+    {"at":25,"action":"begin","visitor":"lab-a"},
+    {"at":28,"action":"turn","text":"I am sorry that happened. You deserve kindness. I will stay with you."},
+    {"at":31,"action":"complete"}
+   ]
+  },
+  "anonymous-and-discard":{
+   "label":"Anonymous / discarded encounter isolation",
+   "duration_seconds":26,
+   "actions":[
+    {"at":0,"action":"reset"},
+    {"at":1,"action":"begin","visitor":"lab-a"},
+    {"at":3,"action":"turn","text":"My name is Clara. I promise to return."},
+    {"at":6,"action":"complete"},
+    {"at":8,"action":"begin","visitor":"lab-anonymous"},
+    {"at":10,"action":"turn","text":"My name is Anonymous. I will stay."},
+    {"at":13,"action":"complete"},
+    {"at":15,"action":"begin","visitor":"lab-a"},
+    {"at":17,"action":"turn","text":"Go away, you ugly monster."},
+    {"at":20,"action":"discard"},
+    {"at":22,"action":"begin","visitor":"lab-a"},
+    {"at":25,"action":"discard"}
+   ]
+  },
+  "inactivity-and-forget":{
+   "label":"Fourteen-day inactivity / forget",
+   "duration_seconds":23,
+   "actions":[
+    {"at":0,"action":"reset"},
+    {"at":1,"action":"begin","visitor":"lab-a"},
+    {"at":3,"action":"turn","text":"My name is Clara. You deserve kindness. I promise to return."},
+    {"at":6,"action":"complete"},
+    {"at":8,"action":"advance","days":14},
+    {"at":10,"action":"begin","visitor":"lab-a"},
+    {"at":13,"action":"complete"},
+    {"at":15,"action":"forget","visitor":"lab-a"},
+    {"at":18,"action":"begin","visitor":"lab-a"},
+    {"at":22,"action":"discard"}
+   ]
+  }
+ }
+}
