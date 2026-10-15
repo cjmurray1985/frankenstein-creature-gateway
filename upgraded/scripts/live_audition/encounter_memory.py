@@ -30,6 +30,8 @@ class EncounterMemory:
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(self.directory, 0o700)
         keyfile = self.directory / 'memory.key'
+        if not keyfile.exists() and (self.directory / 'profiles.sqlite3').exists():
+            raise RuntimeError('Existing continuity data requires its original encryption key')
         try:
             descriptor = os.open(keyfile, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         except FileExistsError:
