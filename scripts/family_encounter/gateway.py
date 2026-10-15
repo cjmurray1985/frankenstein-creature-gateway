@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 from aiohttp import ClientSession, ClientTimeout, WSMsgType, web
 
 COOKIE = 'creature_family'
+VISITOR_COOKIE = 'creature_visitor'
 STATIC = {'/audition.css', '/creature-scene.mjs', '/motion-core.mjs',
           '/mourning-colossus-dsp-core.mjs', '/mourning-colossus-worklet.js',
           '/blender-head.mjs', '/eye-contact.mjs', '/assets/creature-kiri.glb',
@@ -29,7 +30,7 @@ SECURITY = {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
             'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
             'Permissions-Policy': 'microphone=(self), camera=(), geolocation=()',
             'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"}
-UPGRADED_STATIC = {'/visitor-scenarios.json', '/emotion-rehearsal.mjs', '/rehearsal-records.mjs', '/twin-fit.mjs', '/visitor-lab.mjs', '/vision-gaze.mjs', '/attention-motion.mjs', '/performance-arbiter.mjs', '/memory-scenarios.json', '/visitor-scenarios.mjs', '/servo-profile.mjs'}
+UPGRADED_STATIC = {'/visitor-scenarios.json', '/emotion-rehearsal.mjs', '/rehearsal-records.mjs', '/twin-fit.mjs', '/visitor-lab.mjs', '/vision-gaze.mjs', '/attention-motion.mjs', '/performance-arbiter.mjs', '/memory-scenarios.json', '/visitor-scenarios.mjs', '/servo-profile.mjs', '/encounter-memory.mjs'}
 SESSION_SECONDS = 1200
 MAX_REPLY_STREAMS = 60
 FAMILY_STYLES = frozenset(('labored', 'restrained', 'abyssal', 'shelleyan', 'shelleyan_clear'))
@@ -209,6 +210,34 @@ class Gateway:
         self.token = match.group(1).decode()
         return body.decode()
 
+    def visitor_token(self, request):
+        token = request.cookies.get(VISITOR_COOKIE, '')
+        return token if isinstance(token, str) and re.fullmatch(r'[A-Za-z0-9_-]{43}', token) else None
+
+    def visitor_id(self, request):
+        token = self.visitor_token(request)
+        if not token:
+            raise ValueError('Reload the encounter with cookies enabled.')
+        return hashlib.sha256(('creature-visitor-v1:'+token).encode()).hexdigest()
+
+    def visitor_cookie(self, response, token):
+        response.set_cookie(VISITOR_COOKIE, token, max_age=365*86400,
+                            httponly=True, secure=self.secure, samesite='Strict', path='/')
+        return response
+
+    async def visitor_memory(self, request, action):
+        await self.backend_token()
+        code, data, media = await self.upstream_request('POST', '/visitor-memory',
+            {'token':self.token, 'visitor_id':self.visitor_id(request), 'action':action})
+        if action == 'status' and code == 400 and json.loads(data).get('code') == 'visitor_memory_revoked':
+            response = web.json_response({'enabled':True,'returning':False,'encounters':0,'remembered_facts':0,
+                'recent_statements':0,'identity':'this_browser','retention_days':365,'encrypted':True})
+            return self.visitor_cookie(response, secrets.token_urlsafe(32))
+        response = web.Response(status=code, body=data, headers={'Content-Type':media})
+        if code == 200 and action == 'forget':
+            self.visitor_cookie(response, secrets.token_urlsafe(32))
+        return response
+
     async def handle(self, request):
         if request.path == '/login':
             if request.method == 'GET':
@@ -249,7 +278,14 @@ class Gateway:
                     page = re.sub(r'(<meta name="hardware-token" content=")[^"]+(">)', lambda m: m[1]+csrf+m[2], page)
                     page = page.replace('<title>', '<title>Laboratory edition · ', 1)
                 page = page.replace('</dialog>', '<form method="post" action="/logout"><input type="hidden" name="token" value="'+csrf+'"><button class="secondary">Lock the laboratory</button></form></dialog>')
-                return web.Response(text=page, content_type='text/html')
+                response = web.Response(text=page, content_type='text/html')
+                if self.is_upgraded:
+                    self.visitor_cookie(response, self.visitor_token(request) or secrets.token_urlsafe(32))
+                return response
+            if self.is_upgraded and request.path == '/visitor-memory':
+                if not self.store.reserve([('memory:'+sid,120,60)]):
+                    return web.Response(status=429)
+                return await self.visitor_memory(request, 'status')
             if request.path == '/status':
                 if sid != self.owner or time.monotonic() >= self.until:
                     return web.json_response({'active': False, 'stop_requested': True})
@@ -282,6 +318,12 @@ class Gateway:
         body = dict(await request.post()) if request.path == '/logout' else await request.json()
         if not isinstance(body, dict) or not isinstance(body.get('token'), str) or not hmac.compare_digest(body['token'], csrf):
             return web.Response(status=403)
+        if self.is_upgraded and request.path == '/visitor-memory':
+            if not self.store.reserve([('memory-forget:'+sid,30,3600)]):
+                return web.json_response({'error':'Please wait before clearing memory again.'}, status=429)
+            if body.get('action') != 'forget':
+                return web.Response(status=400)
+            return await self.visitor_memory(request, 'forget')
         if self.is_upgraded and request.path == '/visitor-lab':
             if not self.store.reserve([('lab:'+sid, 100, 10)]):
                 return web.json_response({'error':'Rehearsal requests are temporarily limited.'}, status=429)
@@ -326,12 +368,16 @@ class Gateway:
                     mode not in FAMILY_MODES or not isinstance(body.get('sdp'), str) or
                     not body['sdp'].startswith('v=0')):
                 return web.json_response({'error':'Invalid family session configuration.'}, status=400)
+            visitor_id = self.visitor_id(request) if self.is_upgraded else None
             # Versioned keys prevent an obsolete, tighter quota from continuing
             # to block the family after a limit-policy deployment.
             if not self.store.reserve([('sessions:v3:hour',12,3600), ('sessions:v3:day',60,86400)]):
                 return web.json_response({'error':'The family encounter limit has been reached. Please return later.', 'code':'family_session_limit'}, status=429)
             await self.backend_token()
-            code, data, _ = await self.upstream_request('POST', '/session', {'token':self.token,'voice':FAMILY_VOICE,'style':style,'mode':mode,'sdp':body['sdp']})
+            upstream_body = {'token':self.token,'voice':FAMILY_VOICE,'style':style,'mode':mode,'sdp':body['sdp']}
+            if self.is_upgraded:
+                upstream_body['visitor_id'] = visitor_id
+            code, data, _ = await self.upstream_request('POST', '/session', upstream_body)
             if code != 201:
                 provider_code = None
                 provider_reason = None
@@ -359,7 +405,9 @@ class Gateway:
                             provider_reason = 'local_request_validation'
                 except (TypeError, ValueError):
                     pass
-                if code in (401, 403):
+                if self.is_upgraded and provider_code == 'memory_unavailable':
+                    message = 'Encounter memory is unavailable. Your previous memory has been preserved.'
+                elif code in (401, 403):
                     message = 'The hosted voice service rejected its Live credentials or access.'
                 elif code == 429:
                     message = 'The hosted voice service has exhausted its credits or rate limit.'
