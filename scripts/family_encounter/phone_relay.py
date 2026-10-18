@@ -4,6 +4,7 @@ No local URL, camera, admin, person-index or TLS-certificate route is exposed.
 """
 import asyncio,base64,json,re,secrets,time
 from pathlib import Path
+from http.cookies import SimpleCookie
 from aiohttp import web,WSMsgType
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
@@ -42,6 +43,11 @@ class PhoneRelay:
         identifier=secrets.token_hex(16);future=asyncio.get_running_loop().create_future();self.pending[identifier]=future
         headers={key:request.headers[key] for key in ('Cookie','Origin','Content-Type','X-CSRF-Token') if key in request.headers}
         if any(len(v)>8192 for v in headers.values()):self.pending.pop(identifier,None);return web.Response(status=400)
+        if 'Cookie' in headers:
+            cookies=SimpleCookie()
+            try:cookies.load(headers['Cookie'])
+            except Exception:cookies=SimpleCookie()
+            headers['Cookie']='creature_companion='+cookies['creature_companion'].value if 'creature_companion' in cookies else ''
         try:
             await self.agent.send_json({'id':identifier,'method':request.method,'path':request.path,'headers':headers,'body':base64.b64encode(body).decode()})
             result=await asyncio.wait_for(future,20)

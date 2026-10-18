@@ -33,9 +33,9 @@ class RelayTest(unittest.IsolatedAsyncioTestCase):
  async def test_authenticated_forwarding_body_and_cookie(self):
   ws=await self.agent();self.assertTrue((await ws.receive_json())['ready'])
   async def browser():
-   async with self.client.post(self.server.make_url('/companion/save'),data=b'x'*100000,headers={'Origin':'https://exhibit.test','Cookie':'creature_companion=test','X-CSRF-Token':'test','X-Companion-Transport':'spoofed','X-Other':'discard'}) as r:return r.status,await r.read(),r.headers.get('Set-Cookie')
+   async with self.client.post(self.server.make_url('/companion/save'),data=b'x'*100000,headers={'Origin':'https://exhibit.test','Cookie':'creature_companion=test; creature_family=never-forward','X-CSRF-Token':'test','X-Companion-Transport':'spoofed','X-Other':'discard'}) as r:return r.status,await r.read(),r.headers.get('Set-Cookie')
   task=asyncio.create_task(browser());request=await ws.receive_json()
-  self.assertEqual(len(base64.b64decode(request['body'])),100000);self.assertEqual(request['path'],'/companion/save');self.assertNotIn('X-Companion-Transport',request['headers']);self.assertNotIn('X-Other',request['headers'])
+  self.assertEqual(len(base64.b64decode(request['body'])),100000);self.assertEqual(request['path'],'/companion/save');self.assertNotIn('X-Companion-Transport',request['headers']);self.assertNotIn('X-Other',request['headers']);self.assertEqual(request['headers']['Cookie'],'creature_companion=test')
   await ws.send_json({'id':request['id'],'status':200,'body':base64.b64encode(b'{"saved":true}').decode(),'headers':{'Content-Type':'application/json','Set-Cookie':'creature_companion=rotated; Secure; HttpOnly; SameSite=Strict','X-Other':'discard'}})
   status,body,cookie=await task;self.assertEqual(status,200);self.assertEqual(json.loads(body),{'saved':True});self.assertIn('Secure',cookie)
  async def test_duplicate_agent_cannot_replace_existing(self):
