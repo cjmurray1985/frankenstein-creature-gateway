@@ -147,6 +147,8 @@ class Gateway:
         self.lock = asyncio.Lock()
         self.speech_lock = asyncio.Lock()
         self.replies = 0
+        from scripts.family_encounter.phone_relay import PhoneRelay
+        self.phone_relay=PhoneRelay(origin)
         self.app = web.Application(client_max_size=65536, middlewares=[self.guard])
         self.app.router.add_route('*', '/{path:.*}', self.handle)
         self.app.cleanup_ctx.append(self.lifecycle)
@@ -156,6 +158,7 @@ class Gateway:
         if self.upgraded:
             self.upgraded.client = self.client
         yield
+        await self.phone_relay.close()
         await self.client.close()
         self.store.db.close()
 
@@ -166,6 +169,15 @@ class Gateway:
             return web.json_response({'ok': True}, headers=SECURITY)
         if request.host != self.host:
             return web.Response(status=403, headers=SECURITY)
+        if self.phone_relay.handles(request.path):
+            response=await self.phone_relay.handle(request)
+            if not response.prepared:
+                response.headers.setdefault('Cache-Control','no-store')
+                response.headers.setdefault('X-Content-Type-Options','nosniff')
+                response.headers.setdefault('Referrer-Policy','no-referrer')
+                response.headers['X-Frame-Options']='DENY'
+                if self.secure:response.headers['Strict-Transport-Security']='max-age=31536000'
+            return response
         auth = self.store.session(request.cookies.get(COOKIE))
         upgraded_status = auth and self.store.edition(auth[0]) == 'upgraded' and request.path == '/status' and request.query_string == 'diagnostics=1'
         if request.method not in ('GET', 'POST') or request.query_string and request.path != '/speech' and not upgraded_status:

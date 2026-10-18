@@ -29,5 +29,9 @@ jobs:
         run: node --test scripts/live_audition/*.test.mjs
       - name: Compile Python sources
         run: python -m compileall -q creature_runtime scripts/family_encounter scripts/live_audition upgraded
+      - name: Test public profile relay
+        run: |
+          pip install -r scripts/family_encounter/requirements.txt
+          python -m unittest discover -s tests -p test_phone_relay.py
       - name: Build deployment container
         run: docker build --file scripts/family_encounter/Dockerfile --tag creature-family-encounter:ci .
