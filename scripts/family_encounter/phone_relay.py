@@ -27,8 +27,9 @@ class PhoneRelay:
     def handles(self,path):return path=='/companion-relay' or bool(GET_PATH.fullmatch(path)) or path in POST_PATH or path in OPERATOR_GET or path in OPERATOR_POST
     def rate(self,request):
         now=time.monotonic();self.attempts={k:v for k,v in self.attempts.items() if v[1]>now}
-        key=request.remote or 'unknown';count,until=self.attempts.get(key,(0,now+60))
-        if count>=120 or len(self.attempts)>4096:return False
+        owner=request.path.startswith('/operator/')
+        key=(request.remote or 'unknown', 'operator' if owner else 'visitor');count,until=self.attempts.get(key,(0,now+60))
+        if count>=(360 if owner else 120) or len(self.attempts)>4096:return False
         self.attempts[key]=(count+1,until);return True
     async def handle(self,request):
         if request.query_string:return web.Response(status=404)
