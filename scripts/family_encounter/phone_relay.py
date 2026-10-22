@@ -1,6 +1,7 @@
 """Public HTTPS phone routes over an outbound, signed local-agent channel.
 
-No local URL, camera, admin, person-index or TLS-certificate route is exposed.
+Visitor profile and separately authenticated owner app use explicit routes only.
+No arbitrary local URL or unauthenticated private data route is exposed.
 """
 import asyncio,base64,json,re,secrets,time
 from pathlib import Path
@@ -8,20 +9,22 @@ from http.cookies import SimpleCookie
 from aiohttp import web,WSMsgType
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
+OPERATOR_GET=frozenset(('/operator/','/operator/app.js','/operator/style.css','/operator/manifest.webmanifest','/operator/sw.js','/operator/icon-192.png','/operator/icon-512.png','/operator/api/status','/operator/api/camera','/operator/api/session'))
+OPERATOR_POST=frozenset(('/operator/api/login','/operator/api/logout','/operator/api/power','/operator/api/memory','/operator/api/merges'))
 GET_PATH=re.compile(r'/p/[A-Za-z0-9_-]{32}|/companion/(?:app\.js|style\.css|me|portrait|duplicates)')
 POST_PATH=frozenset(('/companion/claim','/companion/auth','/companion/lock','/companion/save','/companion/merge-request'))
 LIMIT=3_000_000
 RESPONSE_LIMIT=5_000_000
 
 def allowed(method,path):
-    return bool(method=='GET' and GET_PATH.fullmatch(path) or method=='POST' and path in POST_PATH)
+    return bool(method=='GET' and (GET_PATH.fullmatch(path) or path in OPERATOR_GET) or method=='POST' and (path in POST_PATH or path in OPERATOR_POST))
 
 class PhoneRelay:
     def __init__(self,origin,public_key=None):
         self.origin=origin;self.agent=None;self.pending={};self.attempts={}
         file=Path(__file__).with_name('phone-relay-public-key.txt')
         self.key=public_key if public_key is not None else bytes.fromhex(file.read_text().strip()) if file.exists() else None
-    def handles(self,path):return path=='/companion-relay' or bool(GET_PATH.fullmatch(path)) or path in POST_PATH
+    def handles(self,path):return path=='/companion-relay' or bool(GET_PATH.fullmatch(path)) or path in POST_PATH or path in OPERATOR_GET or path in OPERATOR_POST
     def rate(self,request):
         now=time.monotonic();self.attempts={k:v for k,v in self.attempts.items() if v[1]>now}
         key=request.remote or 'unknown';count,until=self.attempts.get(key,(0,now+60))
@@ -47,7 +50,8 @@ class PhoneRelay:
             cookies=SimpleCookie()
             try:cookies.load(headers['Cookie'])
             except Exception:cookies=SimpleCookie()
-            headers['Cookie']='creature_companion='+cookies['creature_companion'].value if 'creature_companion' in cookies else ''
+            cookie_name='creature_operator' if request.path.startswith('/operator/') else 'creature_companion'
+            headers['Cookie']=cookie_name+'='+cookies[cookie_name].value if cookie_name in cookies else ''
         try:
             await self.agent.send_json({'id':identifier,'method':request.method,'path':request.path,'headers':headers,'body':base64.b64encode(body).decode()})
             result=await asyncio.wait_for(future,20)
@@ -56,7 +60,7 @@ class PhoneRelay:
             response=web.Response(status=int(result['status']),body=raw)
             for key,value in result.get('headers',{}).items():
                 if key.lower() in ('content-type','content-security-policy','referrer-policy','x-content-type-options') and isinstance(value,str) and '\r' not in value and '\n' not in value:response.headers[key]=value
-                if key.lower()=='set-cookie' and isinstance(value,str) and value.startswith('creature_companion=') and '\r' not in value and '\n' not in value:response.headers['Set-Cookie']=value
+                if key.lower()=='set-cookie' and isinstance(value,str) and value.startswith(('creature_companion=','creature_operator=')) and '\r' not in value and '\n' not in value:response.headers['Set-Cookie']=value
             response.headers['Cache-Control']='no-store'
             return response
         except (asyncio.TimeoutError,ConnectionError,ValueError,KeyError):return self.unavailable()
