@@ -10,7 +10,7 @@ from aiohttp import web,WSMsgType
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 OPERATOR_GET=frozenset(('/operator/','/operator/app.js','/operator/style.css','/operator/manifest.webmanifest','/operator/sw.js','/operator/icon-192.png','/operator/icon-512.png','/operator/api/status','/operator/api/camera','/operator/api/session'))
-OPERATOR_POST=frozenset(('/operator/api/login','/operator/api/logout','/operator/api/power','/operator/api/memory','/operator/api/merges'))
+OPERATOR_POST=frozenset(('/operator/api/login','/operator/api/logout','/operator/api/power','/operator/api/memory','/operator/api/merges','/operator/api/notifications'))
 GET_PATH=re.compile(r'/p/[A-Za-z0-9_-]{32}|/companion/(?:app\.js|style\.css|me|portrait|duplicates)')
 POST_PATH=frozenset(('/companion/claim','/companion/auth','/companion/lock','/companion/save','/companion/merge-request'))
 LIMIT=3_000_000
